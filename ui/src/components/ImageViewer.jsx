@@ -8,10 +8,24 @@ export default function ImageViewer({ imageData, width, height }) {
   const colors = useThemeColors()
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
+  const [loadedImage, setLoadedImage] = useState(null)
 
   const nodes = imageData?.nodes ?? []
   const imgWidth = imageData?.width ?? 800
   const imgHeight = imageData?.height ?? 600
+  const imageUrl = imageData?.imageUrl ?? null
+
+  // Load the actual image when URL changes
+  useEffect(() => {
+    if (!imageUrl) {
+      setLoadedImage(null)
+      return
+    }
+    const img = new window.Image()
+    img.onload = () => setLoadedImage(img)
+    img.onerror = () => setLoadedImage(null)
+    img.src = imageUrl
+  }, [imageUrl])
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -24,24 +38,35 @@ export default function ImageViewer({ imageData, width, height }) {
     ctx.translate(x, y)
     ctx.scale(scale, scale)
 
-    // Draw placeholder image background
-    ctx.fillStyle = colors.canvasBg
-    ctx.fillRect(0, 0, imgWidth, imgHeight)
-
-    // Grid pattern for visual context
-    ctx.strokeStyle = colors.canvasGrid
-    ctx.lineWidth = 0.5
-    for (let gx = 0; gx < imgWidth; gx += 40) {
-      ctx.beginPath()
-      ctx.moveTo(gx, 0)
-      ctx.lineTo(gx, imgHeight)
-      ctx.stroke()
-    }
-    for (let gy = 0; gy < imgHeight; gy += 40) {
-      ctx.beginPath()
-      ctx.moveTo(0, gy)
-      ctx.lineTo(imgWidth, gy)
-      ctx.stroke()
+    // Draw actual image or fallback placeholder
+    if (loadedImage) {
+      ctx.drawImage(loadedImage, 0, 0, imgWidth, imgHeight)
+    } else {
+      // Placeholder background with grid
+      ctx.fillStyle = colors.canvasBg
+      ctx.fillRect(0, 0, imgWidth, imgHeight)
+      ctx.strokeStyle = colors.canvasGrid
+      ctx.lineWidth = 0.5
+      for (let gx = 0; gx < imgWidth; gx += 40) {
+        ctx.beginPath()
+        ctx.moveTo(gx, 0)
+        ctx.lineTo(gx, imgHeight)
+        ctx.stroke()
+      }
+      for (let gy = 0; gy < imgHeight; gy += 40) {
+        ctx.beginPath()
+        ctx.moveTo(0, gy)
+        ctx.lineTo(imgWidth, gy)
+        ctx.stroke()
+      }
+      // Loading text
+      if (imageUrl) {
+        ctx.fillStyle = colors.canvasTextMuted
+        ctx.font = '14px Inter, system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('Loading image...', imgWidth / 2, imgHeight / 2)
+      }
     }
 
     // Draw bounding boxes
@@ -83,7 +108,7 @@ export default function ImageViewer({ imageData, width, height }) {
 
       // Label
       const fontSize = 12
-      ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
+      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`
       const labelWidth = ctx.measureText(node.label).width
       ctx.fillStyle = isHovered ? colors.canvasLabelBgHover : colors.canvasLabelBg
       ctx.fillRect(bx, by - fontSize - 4, labelWidth + 8, fontSize + 4)
@@ -93,11 +118,11 @@ export default function ImageViewer({ imageData, width, height }) {
     })
 
     ctx.restore()
-  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors])
+  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors, loadedImage, imageUrl])
 
   useEffect(() => { draw() }, [draw])
 
-  // Fit the image to the available space on mount / resize
+  // Fit the image to the available space on mount / resize / image load
   useEffect(() => {
     if (!width || !height) return
     const scaleX = width / imgWidth

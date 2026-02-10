@@ -133,12 +133,21 @@ export default function Sidebar({ className, style }) {
                 }
               }}
             >
-              {/* Thumbnail placeholder */}
+              {/* Thumbnail */}
               <div
-                className="w-12 h-12 rounded flex items-center justify-center shrink-0"
+                className="w-12 h-12 rounded overflow-hidden flex items-center justify-center shrink-0"
                 style={{ backgroundColor: 'var(--bg-elevated)' }}
               >
-                <Image className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <Image className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+                )}
               </div>
 
               <div className="flex-1 min-w-0">

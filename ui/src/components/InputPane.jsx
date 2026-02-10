@@ -36,7 +36,7 @@ export default function InputPane() {
       {({ width, height }) =>
         viewMode === 'IMAGE' ? (
           <ImageViewer
-            imageData={{ ...gt, width: selectedImage.width, height: selectedImage.height }}
+            imageData={{ ...gt, width: selectedImage.width, height: selectedImage.height, imageUrl: selectedImage.imageUrl }}
             width={width}
             height={height}
           />
