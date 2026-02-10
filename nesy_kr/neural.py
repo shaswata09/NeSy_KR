@@ -173,16 +173,15 @@ class NeuralPredictor(nn.Module):
             lr=learning_rate
         )
         
-        # Prepare training data
+        # Prepare training data (store entity references, not embeddings)
         positive_samples = []
         for fact in facts:
             if fact.predicate.arity == 2:
                 pred_idx = self.predicate_to_idx.get(fact.predicate.name)
                 if pred_idx is not None:
-                    emb1 = entity_embedding.get_embedding(fact.entities[0])
-                    emb2 = entity_embedding.get_embedding(fact.entities[1])
                     positive_samples.append((
-                        torch.stack([emb1, emb2]),
+                        fact.entities[0],
+                        fact.entities[1],
                         pred_idx,
                         1.0
                     ))
@@ -191,8 +190,13 @@ class NeuralPredictor(nn.Module):
         for epoch in range(epochs):
             total_loss = 0.0
             
-            for emb, pred_idx, label in positive_samples:
+            for entity1, entity2, pred_idx, label in positive_samples:
                 optimizer.zero_grad()
+                
+                # Get fresh embeddings for this iteration
+                emb1 = entity_embedding.get_embedding(entity1)
+                emb2 = entity_embedding.get_embedding(entity2)
+                emb = torch.stack([emb1, emb2])
                 
                 # Forward pass
                 scores = self.forward(emb.unsqueeze(0))[0]
