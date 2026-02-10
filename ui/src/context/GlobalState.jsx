@@ -1,36 +1,42 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useRef } from 'react'
 import { sampleDataset } from '../data/sampleData'
 
 const GlobalStateContext = createContext(null)
 
+// Apply data-theme attribute synchronously so CSS vars resolve before children render
+function applyTheme(t) {
+  const root = document.documentElement
+  if (t === 'dark') {
+    root.setAttribute('data-theme', 'dark')
+  } else {
+    root.removeAttribute('data-theme')
+  }
+}
+
 export function StateProvider({ children }) {
   // Theme: 'light' | 'dark'
   const [theme, setTheme] = useState(() => {
+    let initial = 'light'
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('nesy-theme')
-      if (stored === 'dark' || stored === 'light') return stored
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      if (stored === 'dark' || stored === 'light') {
+        initial = stored
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        initial = 'dark'
+      }
+      applyTheme(initial)
     }
-    return 'light'
+    return initial
   })
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark'
       localStorage.setItem('nesy-theme', next)
+      applyTheme(next)
       return next
     })
   }, [])
-
-  // Sync data-theme attribute on <html> so CSS custom properties resolve correctly
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.setAttribute('data-theme', 'dark')
-    } else {
-      root.removeAttribute('data-theme')
-    }
-  }, [theme])
 
   // Dataset browsing
   const [dataset] = useState(sampleDataset)

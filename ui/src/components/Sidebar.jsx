@@ -1,4 +1,4 @@
-import { Image, Database, ChevronRight, Eye, GitGraph, Sun, Moon } from 'lucide-react'
+import { Image, ScanEye, ChevronRight, Eye, GitGraph, Sun, Moon } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { cn } from '../lib/cn'
 
@@ -25,12 +25,12 @@ export default function Sidebar({ className, style }) {
         style={{ borderColor: 'var(--border-primary)' }}
       >
         <div className="flex items-center gap-2">
-          <Database className="w-4 h-4" style={{ color: 'var(--text-accent)' }} />
+          <ScanEye className="w-4 h-4" style={{ color: 'var(--text-accent)' }} />
           <h2
             className="text-sm font-semibold tracking-wide uppercase"
             style={{ color: 'var(--text-secondary)' }}
           >
-            Dataset Explorer
+            Augmenter
           </h2>
         </div>
 
