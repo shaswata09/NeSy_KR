@@ -21,13 +21,25 @@ export default function PaneContainer({ title, children, className, headerRight 
   }, [])
 
   return (
-    <div className={cn(
-      'flex flex-col rounded-lg border border-[var(--color-pane-border)] bg-[var(--color-pane-bg)] overflow-hidden',
-      className
-    )}>
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border overflow-hidden transition-colors duration-200',
+        className
+      )}
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-pane)',
+      }}
+    >
       {/* Pane Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/50 shrink-0">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b shrink-0"
+        style={{ borderColor: 'var(--border-secondary)' }}
+      >
+        <h3
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           {title}
         </h3>
         {headerRight && <div className="flex items-center gap-1">{headerRight}</div>}

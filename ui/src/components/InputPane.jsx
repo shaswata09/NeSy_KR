@@ -9,7 +9,10 @@ export default function InputPane() {
   if (!selectedImage) {
     return (
       <PaneContainer title="Input Source">
-        <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+        <div
+          className="flex items-center justify-center h-full text-sm"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
           Select an image from the sidebar
         </div>
       </PaneContainer>
@@ -22,7 +25,10 @@ export default function InputPane() {
     <PaneContainer
       title="Input Source"
       headerRight={
-        <span className="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+        <span
+          className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+          style={{ color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-elevated)' }}
+        >
           {viewMode}
         </span>
       }

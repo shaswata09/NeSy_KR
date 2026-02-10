@@ -1,17 +1,8 @@
 import { useRef, useEffect, useCallback, useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { useGlobalState } from '../context/GlobalState'
+import { useThemeColors } from '../lib/useThemeColors'
 import { DIFF_STATUS } from '../data/sampleData'
-
-const STATUS_COLORS = {
-  [DIFF_STATUS.CORRECT]: '#22c55e',
-  [DIFF_STATUS.MISSING]: '#94a3b8',
-  [DIFF_STATUS.HALLUCINATED]: '#ef4444',
-}
-
-const DEFAULT_NODE_COLOR = '#60a5fa'
-const HIGHLIGHT_COLOR = '#facc15'
-const SELECTED_COLOR = '#c084fc'
 
 export default function GraphViewer({
   graphData,
@@ -31,6 +22,8 @@ export default function GraphViewer({
     zoomLockRef,
   } = useGlobalState()
 
+  const colors = useThemeColors()
+
   // Deep clone graph data so force-graph can mutate it without affecting source
   const data = useMemo(() => ({
     nodes: graphData.nodes.map((n) => ({ ...n })),
@@ -49,7 +42,6 @@ export default function GraphViewer({
   useEffect(() => {
     const fg = fgRef.current
     if (!fg || !zoomState.source || zoomState.source === paneId) return
-    // Apply the zoom transform from the other pane
     fg.centerAt(zoomState.x, zoomState.y, 300)
     fg.zoom(zoomState.k, 300)
   }, [zoomState, paneId])
@@ -75,34 +67,38 @@ export default function GraphViewer({
     const radius = isHovered ? 8 : 6
     const label = node.label || node.id
 
-    // Determine color
-    let fillColor = DEFAULT_NODE_COLOR
+    let fillColor = colors.canvasNodeDefault
     let strokeColor = null
     let strokeWidth = 0
     let isDashed = false
 
     if (isDiffView && node.status) {
-      fillColor = STATUS_COLORS[node.status] || DEFAULT_NODE_COLOR
+      const statusColors = {
+        [DIFF_STATUS.CORRECT]: colors.diffCorrect,
+        [DIFF_STATUS.MISSING]: colors.diffMissing,
+        [DIFF_STATUS.HALLUCINATED]: colors.diffHallucinated,
+      }
+      fillColor = statusColors[node.status] || colors.canvasNodeDefault
       if (node.status === DIFF_STATUS.MISSING) {
         isDashed = true
         fillColor = 'transparent'
-        strokeColor = STATUS_COLORS[DIFF_STATUS.MISSING]
+        strokeColor = colors.diffMissing
         strokeWidth = 2
       } else if (node.status === DIFF_STATUS.HALLUCINATED) {
-        strokeColor = STATUS_COLORS[DIFF_STATUS.HALLUCINATED]
+        strokeColor = colors.diffHallucinated
         strokeWidth = 3
       } else {
-        strokeColor = STATUS_COLORS[DIFF_STATUS.CORRECT]
+        strokeColor = colors.diffCorrect
         strokeWidth = 2
       }
     }
 
     if (isHovered) {
-      strokeColor = HIGHLIGHT_COLOR
+      strokeColor = colors.highlightHover
       strokeWidth = 3
     }
     if (isSelected) {
-      strokeColor = SELECTED_COLOR
+      strokeColor = colors.highlightSelected
       strokeWidth = 3
     }
 
@@ -131,7 +127,7 @@ export default function GraphViewer({
     if (isHovered && !isDiffView) {
       ctx.beginPath()
       ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI)
-      ctx.strokeStyle = HIGHLIGHT_COLOR
+      ctx.strokeStyle = colors.highlightHover
       ctx.lineWidth = 1.5 / globalScale
       ctx.globalAlpha = 0.5
       ctx.stroke()
@@ -143,9 +139,9 @@ export default function GraphViewer({
     ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    ctx.fillStyle = isHovered || isSelected ? '#ffffff' : '#cbd5e1'
+    ctx.fillStyle = isHovered || isSelected ? colors.canvasTextHighlight : colors.canvasText
     ctx.fillText(label, node.x, node.y + radius + 2)
-  }, [hoveredEntityId, selectedEntityId, isDiffView])
+  }, [hoveredEntityId, selectedEntityId, isDiffView, colors])
 
   // Custom link rendering
   const paintLink = useCallback((link, ctx, globalScale) => {
@@ -153,27 +149,27 @@ export default function GraphViewer({
     const end = link.target
     if (!start.x || !end.x) return
 
-    let color = '#475569'
+    let color = colors.canvasLinkDefault
     let lineWidth = 1
     let isDashed = false
 
     if (isDiffView && link.status) {
       if (link.status === DIFF_STATUS.CORRECT) {
-        color = STATUS_COLORS[DIFF_STATUS.CORRECT]
+        color = colors.diffCorrect
         lineWidth = 1.5
       } else if (link.status === DIFF_STATUS.MISSING) {
-        color = STATUS_COLORS[DIFF_STATUS.MISSING]
+        color = colors.diffMissing
         isDashed = true
         lineWidth = 1
       } else if (link.status === DIFF_STATUS.HALLUCINATED) {
-        color = STATUS_COLORS[DIFF_STATUS.HALLUCINATED]
+        color = colors.diffHallucinated
         lineWidth = 2.5
       }
     }
 
     // Highlight link if either node is hovered
     if (hoveredEntityId && (start.id === hoveredEntityId || end.id === hoveredEntityId)) {
-      color = HIGHLIGHT_COLOR
+      color = colors.highlightHover
       lineWidth = 2
     }
 
@@ -195,11 +191,11 @@ export default function GraphViewer({
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = isDiffView && link.status === DIFF_STATUS.HALLUCINATED
-        ? '#fca5a5'
-        : '#64748b'
+        ? colors.canvasHallucinatedLabel
+        : colors.canvasTextMuted
       ctx.fillText(link.label, midX, midY)
     }
-  }, [hoveredEntityId, isDiffView])
+  }, [hoveredEntityId, isDiffView, colors])
 
   return (
     <ForceGraph2D

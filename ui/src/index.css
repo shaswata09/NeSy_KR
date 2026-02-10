@@ -1,20 +1,140 @@
 @import "tailwindcss";
 
+/* ========================================
+   Light Theme (default)
+   ======================================== */
 :root {
-  --color-pane-bg: #1e293b;
-  --color-pane-border: #334155;
-  --color-sidebar-bg: #0f172a;
-  --color-diff-correct: #22c55e;
-  --color-diff-missing: #94a3b8;
-  --color-diff-hallucinated: #ef4444;
-  --color-highlight-glow: #3b82f6;
+  /* App surfaces */
+  --bg-app: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-pane: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --bg-active: #dbeafe;
+  --bg-active-strong: #3b82f6;
+
+  /* Borders */
+  --border-primary: #cbd5e1;
+  --border-secondary: #e2e8f0;
+
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #ffffff;
+  --text-accent: #2563eb;
+
+  /* Accent */
+  --accent-blue: #3b82f6;
+
+  /* Diff status */
+  --diff-correct: #16a34a;
+  --diff-missing: #9ca3af;
+  --diff-hallucinated: #dc2626;
+  --diff-correct-bg: rgba(22, 163, 74, 0.1);
+  --diff-missing-bg: rgba(156, 163, 175, 0.1);
+  --diff-hallucinated-bg: rgba(220, 38, 38, 0.1);
+  --diff-correct-text: #15803d;
+  --diff-missing-text: #6b7280;
+  --diff-hallucinated-text: #dc2626;
+
+  /* Highlight */
+  --highlight-glow: #3b82f6;
+  --highlight-hover: #ca8a04;
+  --highlight-selected: #9333ea;
+
+  /* Canvas */
+  --canvas-bg: #f8fafc;
+  --canvas-grid: #e2e8f0;
+  --canvas-node-default: #3b82f6;
+  --canvas-link-default: #94a3b8;
+  --canvas-text: #0f172a;
+  --canvas-text-muted: #64748b;
+  --canvas-text-highlight: #0f172a;
+  --canvas-label-bg: rgba(59, 130, 246, 0.12);
+  --canvas-label-bg-hover: rgba(202, 138, 4, 0.15);
+  --canvas-label-text: #1e40af;
+  --canvas-hover-fill: rgba(202, 138, 4, 0.06);
+  --canvas-hallucinated-label: #dc2626;
+
+  /* Scrollbar */
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
 }
 
+/* ========================================
+   Dark Theme
+   ======================================== */
+[data-theme="dark"] {
+  /* App surfaces */
+  --bg-app: #0f172a;
+  --bg-sidebar: #0f172a;
+  --bg-pane: #1e293b;
+  --bg-elevated: #334155;
+  --bg-hover: #334155;
+  --bg-active: #1e3a5f;
+  --bg-active-strong: #2563eb;
+
+  /* Borders */
+  --border-primary: #334155;
+  --border-secondary: rgba(51, 65, 85, 0.5);
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-inverse: #ffffff;
+  --text-accent: #60a5fa;
+
+  /* Accent */
+  --accent-blue: #3b82f6;
+
+  /* Diff status */
+  --diff-correct: #22c55e;
+  --diff-missing: #94a3b8;
+  --diff-hallucinated: #ef4444;
+  --diff-correct-bg: rgba(34, 197, 94, 0.2);
+  --diff-missing-bg: rgba(148, 163, 184, 0.2);
+  --diff-hallucinated-bg: rgba(239, 68, 68, 0.2);
+  --diff-correct-text: #4ade80;
+  --diff-missing-text: #94a3b8;
+  --diff-hallucinated-text: #f87171;
+
+  /* Highlight */
+  --highlight-glow: #3b82f6;
+  --highlight-hover: #facc15;
+  --highlight-selected: #c084fc;
+
+  /* Canvas */
+  --canvas-bg: #1e293b;
+  --canvas-grid: #334155;
+  --canvas-node-default: #60a5fa;
+  --canvas-link-default: #475569;
+  --canvas-text: #cbd5e1;
+  --canvas-text-muted: #64748b;
+  --canvas-text-highlight: #ffffff;
+  --canvas-label-bg: rgba(59, 130, 246, 0.85);
+  --canvas-label-bg-hover: rgba(250, 204, 21, 0.9);
+  --canvas-label-text: #ffffff;
+  --canvas-hover-fill: rgba(250, 204, 21, 0.08);
+  --canvas-hallucinated-label: #fca5a5;
+
+  /* Scrollbar */
+  --scrollbar-thumb: #475569;
+  --scrollbar-thumb-hover: #64748b;
+}
+
+/* ========================================
+   Base Styles
+   ======================================== */
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Pulse animation for highlight sync */
@@ -29,15 +149,15 @@ body {
 
 /* Glow animation for bounding box highlight */
 @keyframes bbox-glow {
-  0%, 100% { box-shadow: 0 0 8px 2px var(--color-highlight-glow); }
-  50% { box-shadow: 0 0 16px 6px var(--color-highlight-glow); }
+  0%, 100% { box-shadow: 0 0 8px 2px var(--highlight-glow); }
+  50% { box-shadow: 0 0 16px 6px var(--highlight-glow); }
 }
 
 .bbox-glow {
   animation: bbox-glow 1s ease-in-out infinite;
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -45,9 +165,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--scrollbar-thumb-hover);
 }

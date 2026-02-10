@@ -1,15 +1,11 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useGlobalState } from '../context/GlobalState'
-
-const BBOX_COLORS = {
-  default: '#3b82f6',
-  hovered: '#facc15',
-  selected: '#c084fc',
-}
+import { useThemeColors } from '../lib/useThemeColors'
 
 export default function ImageViewer({ imageData, width, height }) {
   const canvasRef = useRef(null)
   const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId } = useGlobalState()
+  const colors = useThemeColors()
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
 
@@ -29,11 +25,11 @@ export default function ImageViewer({ imageData, width, height }) {
     ctx.scale(scale, scale)
 
     // Draw placeholder image background
-    ctx.fillStyle = '#1e293b'
+    ctx.fillStyle = colors.canvasBg
     ctx.fillRect(0, 0, imgWidth, imgHeight)
 
     // Grid pattern for visual context
-    ctx.strokeStyle = '#334155'
+    ctx.strokeStyle = colors.canvasGrid
     ctx.lineWidth = 0.5
     for (let gx = 0; gx < imgWidth; gx += 40) {
       ctx.beginPath()
@@ -57,10 +53,10 @@ export default function ImageViewer({ imageData, width, height }) {
 
       // Glow effect for hovered
       if (isHovered) {
-        ctx.shadowColor = BBOX_COLORS.hovered
+        ctx.shadowColor = colors.highlightHover
         ctx.shadowBlur = 16
       } else if (isSelected) {
-        ctx.shadowColor = BBOX_COLORS.selected
+        ctx.shadowColor = colors.highlightSelected
         ctx.shadowBlur = 12
       } else {
         ctx.shadowColor = 'transparent'
@@ -68,10 +64,10 @@ export default function ImageViewer({ imageData, width, height }) {
       }
 
       ctx.strokeStyle = isHovered
-        ? BBOX_COLORS.hovered
+        ? colors.highlightHover
         : isSelected
-          ? BBOX_COLORS.selected
-          : BBOX_COLORS.default
+          ? colors.highlightSelected
+          : colors.canvasNodeDefault
       ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5
       ctx.strokeRect(bx, by, bw, bh)
 
@@ -81,7 +77,7 @@ export default function ImageViewer({ imageData, width, height }) {
 
       // Semi-transparent fill on hover
       if (isHovered) {
-        ctx.fillStyle = 'rgba(250, 204, 21, 0.08)'
+        ctx.fillStyle = colors.canvasHoverFill
         ctx.fillRect(bx, by, bw, bh)
       }
 
@@ -89,15 +85,15 @@ export default function ImageViewer({ imageData, width, height }) {
       const fontSize = 12
       ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
       const labelWidth = ctx.measureText(node.label).width
-      ctx.fillStyle = isHovered ? 'rgba(250, 204, 21, 0.9)' : 'rgba(59, 130, 246, 0.85)'
+      ctx.fillStyle = isHovered ? colors.canvasLabelBgHover : colors.canvasLabelBg
       ctx.fillRect(bx, by - fontSize - 4, labelWidth + 8, fontSize + 4)
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = colors.canvasLabelText
       ctx.textBaseline = 'top'
       ctx.fillText(node.label, bx + 4, by - fontSize - 2)
     })
 
     ctx.restore()
-  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight])
+  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors])
 
   useEffect(() => { draw() }, [draw])
 

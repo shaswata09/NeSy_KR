@@ -8,7 +8,10 @@ export default function GroundTruthPane() {
   if (!selectedImage) {
     return (
       <PaneContainer title="Ground Truth">
-        <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+        <div
+          className="flex items-center justify-center h-full text-sm"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
           No data selected
         </div>
       </PaneContainer>
@@ -19,7 +22,10 @@ export default function GroundTruthPane() {
     <PaneContainer
       title="Ground Truth"
       headerRight={
-        <span className="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+        <span
+          className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+          style={{ color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-elevated)' }}
+        >
           {selectedImage.groundTruth.nodes.length} nodes
         </span>
       }

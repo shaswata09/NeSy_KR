@@ -1,9 +1,37 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { sampleDataset } from '../data/sampleData'
 
 const GlobalStateContext = createContext(null)
 
 export function StateProvider({ children }) {
+  // Theme: 'light' | 'dark'
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('nesy-theme')
+      if (stored === 'dark' || stored === 'light') return stored
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return 'light'
+  })
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('nesy-theme', next)
+      return next
+    })
+  }, [])
+
+  // Sync data-theme attribute on <html> so CSS custom properties resolve correctly
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.setAttribute('data-theme', 'dark')
+    } else {
+      root.removeAttribute('data-theme')
+    }
+  }, [theme])
+
   // Dataset browsing
   const [dataset] = useState(sampleDataset)
   const [selectedImageId, setSelectedImageId] = useState(sampleDataset[0]?.id ?? null)
@@ -33,6 +61,10 @@ export function StateProvider({ children }) {
   const selectedImage = dataset.find((d) => d.id === selectedImageId) ?? null
 
   const value = {
+    // Theme
+    theme,
+    toggleTheme,
+
     // Dataset
     dataset,
     selectedImageId,
