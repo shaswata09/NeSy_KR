@@ -147,22 +147,31 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
     setTransform({ x: offsetX, y: offsetY, scale: fitScale })
   }, [width, height, imgWidth, imgHeight])
 
-  // Hit-test on click
+  // Hit-test on click — finds all overlapping boxes, sorts smallest-first, and cycles through them
   const handleClick = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect()
     const mx = (e.clientX - rect.left - transform.x) / transform.scale
     const my = (e.clientY - rect.top - transform.y) / transform.scale
 
-    for (const node of nodes) {
-      if (!node.bbox) continue
-      const { x: bx, y: by, w: bw, h: bh } = node.bbox
-      if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
-        setSelectedEntityId(node.id)
-        return
-      }
+    // Find all boxes under the click point, sorted smallest-first
+    const hits = nodes
+      .filter(node => {
+        if (!node.bbox) return false
+        const { x: bx, y: by, w: bw, h: bh } = node.bbox
+        return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh
+      })
+      .sort((a, b) => (a.bbox.w * a.bbox.h) - (b.bbox.w * b.bbox.h))
+
+    if (hits.length === 0) {
+      setSelectedEntityId(null)
+      return
     }
-    setSelectedEntityId(null)
-  }, [nodes, transform, setSelectedEntityId])
+
+    // If current selection is in the hit list, cycle to the next one
+    const currentIdx = hits.findIndex(n => n.id === selectedEntityId)
+    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % hits.length : 0
+    setSelectedEntityId(hits[nextIdx].id)
+  }, [nodes, transform, setSelectedEntityId, selectedEntityId])
 
   // Hit-test on mouse move for hover
   const handleMouseMove = useCallback((e) => {
@@ -171,15 +180,16 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
     const mx = (e.clientX - rect.left - transform.x) / transform.scale
     const my = (e.clientY - rect.top - transform.y) / transform.scale
 
-    for (const node of nodes) {
-      if (!node.bbox) continue
-      const { x: bx, y: by, w: bw, h: bh } = node.bbox
-      if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
-        setHoveredEntityId(node.id)
-        return
-      }
-    }
-    setHoveredEntityId(null)
+    // Prioritize the smallest box under the cursor
+    const hits = nodes
+      .filter(node => {
+        if (!node.bbox) return false
+        const { x: bx, y: by, w: bw, h: bh } = node.bbox
+        return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh
+      })
+      .sort((a, b) => (a.bbox.w * a.bbox.h) - (b.bbox.w * b.bbox.h))
+
+    setHoveredEntityId(hits.length > 0 ? hits[0].id : null)
   }, [nodes, transform, setHoveredEntityId])
 
   // Pan via drag
