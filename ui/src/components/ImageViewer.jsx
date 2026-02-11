@@ -264,6 +264,36 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
         onMouseMoveCapture={handleDrag}
         onWheel={handleWheel}
       />
+      {/* Box color legend */}
+      <div className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="w-3 h-3 rounded-sm border-2"
+            style={{ borderColor: 'var(--canvas-node-default)', backgroundColor: 'transparent' }}
+          />
+          <span className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Default
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="w-3 h-3 rounded-sm border-2"
+            style={{ borderColor: 'var(--highlight-hover)', backgroundColor: 'var(--highlight-hover)', opacity: 0.6 }}
+          />
+          <span className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Hovered
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="w-3 h-3 rounded-sm border-2"
+            style={{ borderColor: 'var(--highlight-selected)', backgroundColor: 'var(--highlight-selected)', opacity: 0.6 }}
+          />
+          <span className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Selected
+          </span>
+        </span>
+      </div>
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
         <div className="grid grid-cols-3 gap-0.5" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
           <div />

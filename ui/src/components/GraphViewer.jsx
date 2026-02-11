@@ -1,255 +1,287 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import ForceGraph2D from 'react-force-graph-2d'
-import { ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LocateFixed, Lock, Unlock } from 'lucide-react'
-import { useGlobalState } from '../context/GlobalState'
-import { useThemeColors } from '../lib/useThemeColors'
-import { DIFF_STATUS } from '../lib/diffStatus'
+import cytoscape from 'cytoscape';
+import cola from 'cytoscape-cola';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Lock, Maximize2, Minimize2, Unlock, ZoomIn, ZoomOut } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CytoscapeComponent from 'react-cytoscapejs';
+
+cytoscape.use(cola);
+
+import { useGlobalState } from '../context/GlobalState';
+import { useThemeColors } from '../lib/useThemeColors';
 
 export default function GraphViewer({
   graphData,
   isDiffView = false,
-  paneId = 'default',
   width,
   height,
   onToggleFullscreen,
   isFullscreen,
 }) {
-  const fgRef = useRef()
+  const cyRef = useRef(null);
   const {
-    selectedEntityId,
     setSelectedEntityId,
     hoveredEntityId,
     setHoveredEntityId,
-  } = useGlobalState()
+    selectedEntityId
+  } = useGlobalState();
+  const colors = useThemeColors();
+  const [locked, setLocked] = useState(false);
 
-  const colors = useThemeColors()
+  // Convert graphData to Cytoscape elements
+  const elements = useMemo(() => {
+    const nodes = graphData.nodes.map((n) => ({
+      data: { 
+        id: n.id, 
+        label: n.label || n.id,
+        status: n.status,
+        isDiffView
+      }
+    }));
 
-  const [locked, setLocked] = useState(false)
+    const edges = graphData.links.map((l, i) => ({
+      data: {
+        id: `e-${i}`,
+        source: typeof l.source === 'object' ? l.source.id : l.source,
+        target: typeof l.target === 'object' ? l.target.id : l.target,
+        label: l.label,
+        status: l.status,
+        isDiffView
+      }
+    }));
 
-  // Deep clone graph data so force-graph can mutate it without affecting source
-  const data = useMemo(() => ({
-    nodes: graphData.nodes.map((n) => ({ ...n })),
-    links: graphData.links.map((l) => ({ ...l })),
-  }), [graphData])
+    return [...nodes, ...edges];
+  }, [graphData, isDiffView]);
 
-  // Configure physics on mount
+  const stylesheet = useMemo(() => [
+    {
+      selector: 'node',
+      style: {
+        'width': 16,
+        'height': 16,
+        'label': 'data(label)',
+        'background-color': colors.canvasNodeDefault,
+        'color': colors.canvasText,
+        'font-size': '10px',
+        'font-family': 'Inter, system-ui, sans-serif',
+        'text-valign': 'bottom',
+        'text-halign': 'center',
+        'text-margin-y': 4,
+        'transition-property': 'background-color, line-color, width, height, border-width, border-color, shadow-blur, shadow-color',
+        'transition-duration': '0.2s',
+        'z-index': 1
+      }
+    },
+    {
+      selector: 'node:hover',
+      style: {
+        'width': 20,
+        'height': 20,
+        'border-width': 3,
+        'border-color': colors.highlightHover,
+        'z-index': 10
+      }
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'border-width': 3,
+        'border-color': colors.highlightSelected,
+        'z-index': 10
+      }
+    },
+    // Status colors
+    {
+      selector: 'node[status="correct"]',
+      style: { 'background-color': colors.diffCorrect }
+    },
+    {
+      selector: 'node[status="hallucinated"]',
+      style: { 
+        'background-color': colors.diffHallucinated,
+        'border-width': 2,
+        'border-color': colors.diffHallucinated
+      }
+    },
+    {
+      selector: 'node[status="missing"]',
+      style: { 
+        'background-color': 'transparent',
+        'border-width': 2,
+        'border-color': colors.diffMissing,
+        'border-style': 'dashed'
+      }
+    },
+    // Edges
+    {
+      selector: 'edge',
+      style: {
+        'width': 1.5,
+        'line-color': colors.canvasLinkDefault,
+        'label': 'data(label)',
+        'font-size': '8px',
+        'color': colors.canvasTextMuted,
+        'text-background-opacity': 0.8,
+        'text-background-color': 'var(--bg-elevated)',
+        'text-background-padding': '2px',
+        'text-background-shape': 'roundrectangle',
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'triangle',
+        'target-arrow-color': colors.canvasLinkDefault,
+        'arrow-scale': 0.8
+      }
+    },
+    {
+      selector: 'edge[status="correct"]',
+      style: {
+        'line-color': colors.diffCorrect,
+        'target-arrow-color': colors.diffCorrect
+      }
+    },
+    {
+      selector: 'edge[status="hallucinated"]',
+      style: {
+        'line-color': colors.diffHallucinated,
+        'target-arrow-color': colors.diffHallucinated,
+        'width': 2.5
+      }
+    },
+    {
+      selector: 'edge[status="missing"]',
+      style: {
+        'line-color': colors.diffMissing,
+        'target-arrow-color': colors.diffMissing,
+        'line-style': 'dashed'
+      }
+    },
+    {
+        selector: 'node.hovered-adj',
+        style: {
+            'border-width': 2,
+            'border-color': colors.highlightHover
+        }
+    },
+    {
+        selector: 'edge.highlighted',
+        style: {
+            'line-color': colors.highlightHover,
+            'width': 2,
+            'target-arrow-color': colors.highlightHover,
+            'z-index': 5
+        }
+    }
+  ], [colors]);
+
+  const layout = {
+    name: 'cola',
+    animate: true,
+    refresh: 1,
+    maxSimulationTime: 4000,
+    ungrabifyWhileSimulating: false,
+    fit: true,
+    padding: 30,
+    randomize: false,
+    avoidOverlap: true,
+    handleDisconnected: true,
+    convergenceThreshold: 0.01,
+    nodeSpacing: 40,
+    edgeLength: 100,
+    infinite: true // Keep it reactive to dragging
+  };
+
   useEffect(() => {
-    const fg = fgRef.current
-    if (!fg) return
-    fg.d3Force('charge').strength(-150)
-    fg.d3Force('link').distance(80)
-  }, [])
+    const cy = cyRef.current;
+    if (!cy) return;
 
-  const handleNodeClick = useCallback((node) => {
-    setSelectedEntityId(node.id)
-  }, [setSelectedEntityId])
+    const handleSelect = (evt) => setSelectedEntityId(evt.target.id());
+    const handleUnselect = () => setSelectedEntityId(null);
+    const handleMouseOver = (evt) => {
+        const node = evt.target;
+        setHoveredEntityId(node.id());
+        node.neighborhood().addClass('hovered-adj');
+        node.connectedEdges().addClass('highlighted');
+    };
+    const handleMouseOut = (evt) => {
+        setHoveredEntityId(null);
+        evt.target.neighborhood().removeClass('hovered-adj');
+        evt.target.connectedEdges().removeClass('highlighted');
+    };
 
-  const handleNodeHover = useCallback((node) => {
-    setHoveredEntityId(node ? node.id : null)
-  }, [setHoveredEntityId])
+    // Sticky behavior: set node to fixed (locked) after drag
+    const handleDragFree = (evt) => {
+        evt.target.lock();
+        evt.target.addClass('sticky');
+    };
 
-  // Custom node rendering
-  const paintNode = useCallback((node, ctx, globalScale) => {
-    const isHovered = hoveredEntityId === node.id
-    const isSelected = selectedEntityId === node.id
-    const radius = isHovered ? 8 : 6
-    const label = node.label || node.id
+    cy.on('tap', 'node', handleSelect);
+    cy.on('tap', (evt) => { if (evt.target === cy) handleUnselect(); });
+    cy.on('mouseover', 'node', handleMouseOver);
+    cy.on('mouseout', 'node', handleMouseOut);
+    cy.on('dragfree', 'node', handleDragFree);
 
-    let fillColor = colors.canvasNodeDefault
-    let strokeColor = null
-    let strokeWidth = 0
-    let isDashed = false
+    return () => {
+      cy.off('tap', 'node', handleSelect);
+      cy.off('tap', handleUnselect);
+      cy.off('mouseover', 'node', handleMouseOver);
+      cy.off('mouseout', 'node', handleMouseOut);
+      cy.off('dragfree', 'node', handleDragFree);
+    };
+  }, [setSelectedEntityId, setHoveredEntityId]);
 
-    if (isDiffView && node.status) {
-      const statusColors = {
-        [DIFF_STATUS.CORRECT]: colors.diffCorrect,
-        [DIFF_STATUS.MISSING]: colors.diffMissing,
-        [DIFF_STATUS.HALLUCINATED]: colors.diffHallucinated,
-      }
-      fillColor = statusColors[node.status] || colors.canvasNodeDefault
-      if (node.status === DIFF_STATUS.MISSING) {
-        isDashed = true
-        fillColor = 'transparent'
-        strokeColor = colors.diffMissing
-        strokeWidth = 2
-      } else if (node.status === DIFF_STATUS.HALLUCINATED) {
-        strokeColor = colors.diffHallucinated
-        strokeWidth = 3
-      } else {
-        strokeColor = colors.diffCorrect
-        strokeWidth = 2
-      }
+  // Handle selected entity highlight from external changes
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.nodes().unselect();
+    if (selectedEntityId) {
+      cy.$(`#${selectedEntityId}`).select();
     }
-
-    if (isHovered) {
-      strokeColor = colors.highlightHover
-      strokeWidth = 3
-    }
-    if (isSelected) {
-      strokeColor = colors.highlightSelected
-      strokeWidth = 3
-    }
-
-    // Draw node circle
-    ctx.beginPath()
-    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI)
-
-    if (isDashed) {
-      ctx.setLineDash([3, 3])
-    }
-
-    if (fillColor !== 'transparent') {
-      ctx.fillStyle = fillColor
-      ctx.fill()
-    }
-
-    if (strokeColor) {
-      ctx.strokeStyle = strokeColor
-      ctx.lineWidth = strokeWidth / globalScale
-      ctx.stroke()
-    }
-
-    ctx.setLineDash([])
-
-    // Pulse animation for hovered entity (in non-source panes)
-    if (isHovered && !isDiffView) {
-      ctx.beginPath()
-      ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI)
-      ctx.strokeStyle = colors.highlightHover
-      ctx.lineWidth = 1.5 / globalScale
-      ctx.globalAlpha = 0.5
-      ctx.stroke()
-      ctx.globalAlpha = 1
-    }
-
-    // Label
-    const fontSize = Math.max(12 / globalScale, 3)
-    ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.fillStyle = isHovered || isSelected ? colors.canvasTextHighlight : colors.canvasText
-    ctx.fillText(label, node.x, node.y + radius + 2)
-  }, [hoveredEntityId, selectedEntityId, isDiffView, colors])
-
-  // Custom link rendering
-  const paintLink = useCallback((link, ctx, globalScale) => {
-    const start = link.source
-    const end = link.target
-    if (!start.x || !end.x) return
-
-    let color = colors.canvasLinkDefault
-    let lineWidth = 1
-    let isDashed = false
-
-    if (isDiffView && link.status) {
-      if (link.status === DIFF_STATUS.CORRECT) {
-        color = colors.diffCorrect
-        lineWidth = 1.5
-      } else if (link.status === DIFF_STATUS.MISSING) {
-        color = colors.diffMissing
-        isDashed = true
-        lineWidth = 1
-      } else if (link.status === DIFF_STATUS.HALLUCINATED) {
-        color = colors.diffHallucinated
-        lineWidth = 2.5
-      }
-    }
-
-    // Highlight link if either node is hovered
-    if (hoveredEntityId && (start.id === hoveredEntityId || end.id === hoveredEntityId)) {
-      color = colors.highlightHover
-      lineWidth = 2
-    }
-
-    ctx.beginPath()
-    if (isDashed) ctx.setLineDash([4, 4])
-    ctx.moveTo(start.x, start.y)
-    ctx.lineTo(end.x, end.y)
-    ctx.strokeStyle = color
-    ctx.lineWidth = lineWidth / globalScale
-    ctx.stroke()
-    ctx.setLineDash([])
-
-    // Edge label
-    if (link.label) {
-      const midX = (start.x + end.x) / 2
-      const midY = (start.y + end.y) / 2
-      const fontSize = Math.max(10 / globalScale, 2.5)
-      ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = isDiffView && link.status === DIFF_STATUS.HALLUCINATED
-        ? colors.canvasHallucinatedLabel
-        : colors.canvasTextMuted
-      ctx.fillText(link.label, midX, midY)
-    }
-  }, [hoveredEntityId, isDiffView, colors])
-
-  const handlePan = useCallback((dx, dy) => {
-    const fg = fgRef.current
-    if (!fg) return
-    const center = fg.screen2GraphCoords(width / 2, height / 2)
-    fg.centerAt(center.x + dx, center.y + dy, 300)
-  }, [width, height])
+  }, [selectedEntityId]);
 
   const handleToggleLock = useCallback(() => {
     setLocked((prev) => {
-      const fg = fgRef.current
-      if (!fg) return prev
-      if (!prev) {
-        data.nodes.forEach((node) => { node.fx = node.x; node.fy = node.y })
-      } else {
-        data.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined })
-        fg.d3ReheatSimulation()
-      }
-      return !prev
-    })
-  }, [data])
-
-  const handleZoomIn = useCallback(() => {
-    const fg = fgRef.current
-    if (!fg) return
-    fg.zoom(fg.zoom() * 1.4, 300)
-  }, [])
-
-  const handleZoomOut = useCallback(() => {
-    const fg = fgRef.current
-    if (!fg) return
-    fg.zoom(fg.zoom() / 1.4, 300)
-  }, [])
+      const cy = cyRef.current;
+      if (!cy) return prev;
+      cy.autolock(!prev);
+      return !prev;
+    });
+  }, []);
 
   const handleFit = useCallback(() => {
-    const fg = fgRef.current
-    if (!fg) return
-    fg.zoomToFit(300, 40)
-  }, [])
+    if (cyRef.current) cyRef.current.fit(null, 50);
+  }, []);
 
-  const btnStyle = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }
-  const btnActiveStyle = { backgroundColor: 'var(--text-secondary)', color: 'var(--bg-pane)', border: '1px solid var(--text-secondary)' }
+  const handleZoomIn = useCallback(() => {
+    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 1.2);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() / 1.2);
+  }, []);
+
+  const handlePan = (dx, dy) => {
+    if (cyRef.current) cyRef.current.panBy({ x: dx, y: dy });
+  };
+
+  const btnStyle = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' };
+  const btnActiveStyle = { backgroundColor: 'var(--text-secondary)', color: 'var(--bg-pane)', border: '1px solid var(--text-secondary)' };
 
   return (
-    <div className="relative" style={{ width, height }}>
-      <ForceGraph2D
-        ref={fgRef}
-        graphData={data}
-        width={width}
-        height={height}
-        backgroundColor="transparent"
-        nodeCanvasObject={paintNode}
-        nodePointerAreaPaint={(node, color, ctx) => {
-          ctx.beginPath()
-          ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI)
-          ctx.fillStyle = color
-          ctx.fill()
-        }}
-        linkCanvasObject={paintLink}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
-        cooldownTicks={80}
-        enableNodeDrag={!locked}
+    <div className="relative w-full h-full">
+      <CytoscapeComponent
+        elements={elements}
+        style={{ width: '100%', height: '100%' }}
+        stylesheet={stylesheet}
+        layout={layout}
+        cy={(cy) => { cyRef.current = cy; }}
+        className="bg-transparent"
+        zoom={1}
+        pan={{ x: 0, y: 0 }}
+        minZoom={0.1}
+        maxZoom={5}
       />
-      <div className="absolute bottom-2 right-2 flex items-center gap-2">
-        <div className="grid grid-cols-3 gap-0.5" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
+      
+      <div className="absolute bottom-2 right-2 flex items-center gap-2 pointer-events-none">
+        <div className="grid grid-cols-3 gap-0.5 pointer-events-auto" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
           <div />
           <button onClick={() => handlePan(0, -40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan up"><ChevronUp size={12} /></button>
           <div />
@@ -260,7 +292,7 @@ export default function GraphViewer({
           <button onClick={() => handlePan(0, 40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan down"><ChevronDown size={12} /></button>
           <div />
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 pointer-events-auto">
           <button onClick={handleToggleLock} className="p-1 rounded cursor-pointer" style={locked ? btnActiveStyle : btnStyle} title={locked ? 'Unlock layout' : 'Lock layout'}>
             {locked ? <Lock size={12} /> : <Unlock size={12} />}
           </button>
@@ -274,5 +306,5 @@ export default function GraphViewer({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -10,13 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@xyflow/react": "^12.10.0",
     "clsx": "^2.1.1",
+    "cytoscape": "^3.33.1",
+    "cytoscape-cola": "^2.5.1",
     "d3-force": "^3.0.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
+    "react-cytoscapejs": "^2.0.0",
     "react-dom": "^19.2.0",
     "react-force-graph-2d": "^1.29.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "webcola": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
