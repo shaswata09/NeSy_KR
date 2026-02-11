@@ -9,45 +9,65 @@ import PaneContainer from "./PaneContainer";
 import QAViewer from "./QAViewer";
 import ViewModeToggle from "./ViewModeToggle";
 
-function DiffLegend() {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex items-center gap-1">
+function DiffLegend({ visibility, onToggle }) {
+  const items = [
+    {
+      key: "correct",
+      label: "Correct",
+      dot: (
         <span
           className="w-2 h-2 rounded-full"
           style={{ backgroundColor: "var(--diff-correct)" }}
         />
-        <span
-          className="text-[10px]"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Correct
-        </span>
-      </span>
-      <span className="flex items-center gap-1">
+      ),
+    },
+    {
+      key: "missing",
+      label: "Missing",
+      dot: (
         <span
           className="w-2 h-2 rounded-full border border-dashed"
           style={{ borderColor: "var(--diff-missing)" }}
         />
-        <span
-          className="text-[10px]"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Missing
-        </span>
-      </span>
-      <span className="flex items-center gap-1">
+      ),
+    },
+    {
+      key: "hallucinated",
+      label: "Hallucinated",
+      dot: (
         <span
           className="w-2 h-2 rounded-full"
           style={{ backgroundColor: "var(--diff-hallucinated)" }}
         />
-        <span
-          className="text-[10px]"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Hallucinated
-        </span>
-      </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="flex items-center gap-3">
+      {items.map((item) => {
+        const active = visibility[item.key];
+        return (
+          <button
+            key={item.key}
+            onClick={() => onToggle(item.key)}
+            className="flex items-center gap-1 cursor-pointer transition-opacity"
+            style={{ opacity: active ? 1 : 0.35 }}
+            title={active ? `Hide ${item.label.toLowerCase()}` : `Show ${item.label.toLowerCase()}`}
+          >
+            {item.dot}
+            <span
+              className="text-[10px]"
+              style={{
+                color: "var(--text-secondary)",
+                textDecoration: active ? "none" : "line-through",
+              }}
+            >
+              {item.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -55,6 +75,14 @@ function DiffLegend() {
 export default function PredictionPane() {
   const { selectedImage } = useGlobalState();
   const [viewMode, setViewMode] = useState("GRAPH");
+  const [statusVisibility, setStatusVisibility] = useState({
+    correct: true,
+    missing: true,
+    hallucinated: true,
+  });
+
+  const toggleStatus = (key) =>
+    setStatusVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const pred = selectedImage?.prediction;
   const modes = pred
@@ -102,8 +130,8 @@ export default function PredictionPane() {
         <div className="relative" style={{ width, height }}>
           {/* Diff legend overlay - only for GRAPH mode */}
           {activeMode === "GRAPH" && (
-            <div className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none">
-              <DiffLegend />
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-3">
+              <DiffLegend visibility={statusVisibility} onToggle={toggleStatus} />
             </div>
           )}
           {activeMode === "IMAGE" ? (
@@ -128,6 +156,9 @@ export default function PredictionPane() {
               height={height}
               onToggleFullscreen={toggleFullscreen}
               isFullscreen={isFullscreen}
+              hiddenStatuses={Object.entries(statusVisibility)
+                .filter(([, v]) => !v)
+                .map(([k]) => k)}
             />
           ) : activeMode === "ATTRIBUTES" ? (
             <AttributesViewer

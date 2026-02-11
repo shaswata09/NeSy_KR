@@ -16,6 +16,7 @@ export default function GraphViewer({
   height,
   onToggleFullscreen,
   isFullscreen,
+  hiddenStatuses = [],
 }) {
   const cyRef = useRef(null);
   const {
@@ -180,6 +181,13 @@ export default function GraphViewer({
         selector: 'edge.dimmed',
         style: {
             'opacity': 0.15
+        }
+    },
+    // Hidden status (toggled via legend)
+    {
+        selector: '.status-hidden',
+        style: {
+            'display': 'none'
         }
     }
   ], [colors]);
@@ -463,6 +471,21 @@ export default function GraphViewer({
       }
     }
   }, [selectedEntityId, selectedEdgeId]);
+
+  // Toggle visibility of nodes/edges based on hiddenStatuses from legend
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    // Remove all status-hidden first
+    cy.elements().removeClass('status-hidden');
+
+    // Hide nodes and edges whose status is in the hidden list
+    hiddenStatuses.forEach((status) => {
+      cy.nodes(`[status="${status}"]`).addClass('status-hidden');
+      cy.edges(`[status="${status}"]`).addClass('status-hidden');
+    });
+  }, [hiddenStatuses]);
 
   const handleToggleLock = useCallback(() => {
     setLocked((prev) => {

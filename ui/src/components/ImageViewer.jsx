@@ -11,6 +11,7 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
   const [loadedImage, setLoadedImage] = useState(null)
   const [locked, setLocked] = useState(false)
+  const [overlayEnabled, setOverlayEnabled] = useState(true)
 
   const nodes = imageData?.nodes ?? []
   const imgWidth = imageData?.width ?? 800
@@ -71,68 +72,70 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
       }
     }
 
-    // Draw bounding boxes
-    nodes.forEach((node) => {
-      if (!node.bbox) return
-      const { x: bx, y: by, w: bw, h: bh } = node.bbox
-      const isHovered = hoveredEntityId === node.id
-      const isSelected = selectedEntityId === node.id
+    // Draw bounding boxes (skip when overlay is disabled)
+    if (overlayEnabled) {
+      nodes.forEach((node) => {
+        if (!node.bbox) return
+        const { x: bx, y: by, w: bw, h: bh } = node.bbox
+        const isHovered = hoveredEntityId === node.id
+        const isSelected = selectedEntityId === node.id
 
-      // Glow effect for hovered
-      if (isHovered) {
-        ctx.shadowColor = colors.highlightHover
-        ctx.shadowBlur = 16
-      } else if (isSelected) {
-        ctx.shadowColor = colors.highlightSelected
-        ctx.shadowBlur = 12
-      } else {
+        // Glow effect for hovered
+        if (isHovered) {
+          ctx.shadowColor = colors.highlightHover
+          ctx.shadowBlur = 16
+        } else if (isSelected) {
+          ctx.shadowColor = colors.highlightSelected
+          ctx.shadowBlur = 12
+        } else {
+          ctx.shadowColor = 'transparent'
+          ctx.shadowBlur = 0
+        }
+
+        ctx.strokeStyle = isHovered
+          ? colors.highlightHover
+          : isSelected
+            ? colors.highlightSelected
+            : colors.canvasNodeDefault
+        ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5
+        ctx.strokeRect(bx, by, bw, bh)
+
+        // Reset shadow
         ctx.shadowColor = 'transparent'
         ctx.shadowBlur = 0
+
+        // Semi-transparent fill on hover
+        if (isHovered) {
+          ctx.fillStyle = colors.canvasHoverFill
+          ctx.fillRect(bx, by, bw, bh)
+        }
+
+        // Label
+        const fontSize = 12
+        ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`
+        const labelWidth = ctx.measureText(node.label).width
+        ctx.fillStyle = isHovered ? colors.canvasLabelBgHover : colors.canvasLabelBg
+        ctx.fillRect(bx, by - fontSize - 4, labelWidth + 8, fontSize + 4)
+        ctx.fillStyle = colors.canvasLabelText
+        ctx.textBaseline = 'top'
+        ctx.fillText(node.label, bx + 4, by - fontSize - 2)
+      })
+
+      // Dim overlay when a bounding box is selected (spotlight effect)
+      const selectedNode = selectedEntityId ? nodes.find(n => n.id === selectedEntityId && n.bbox) : null
+      if (selectedNode) {
+        const { x: bx, y: by, w: bw, h: bh } = selectedNode.bbox
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+        // Draw overlay with a hole cut out for the selected bbox
+        ctx.beginPath()
+        ctx.rect(0, 0, imgWidth, imgHeight)          // Outer rect (full image)
+        ctx.rect(bx, by + bh, bw, -bh)               // Inner rect (counter-clockwise = hole)
+        ctx.fill('evenodd')
       }
-
-      ctx.strokeStyle = isHovered
-        ? colors.highlightHover
-        : isSelected
-          ? colors.highlightSelected
-          : colors.canvasNodeDefault
-      ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5
-      ctx.strokeRect(bx, by, bw, bh)
-
-      // Reset shadow
-      ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-
-      // Semi-transparent fill on hover
-      if (isHovered) {
-        ctx.fillStyle = colors.canvasHoverFill
-        ctx.fillRect(bx, by, bw, bh)
-      }
-
-      // Label
-      const fontSize = 12
-      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`
-      const labelWidth = ctx.measureText(node.label).width
-      ctx.fillStyle = isHovered ? colors.canvasLabelBgHover : colors.canvasLabelBg
-      ctx.fillRect(bx, by - fontSize - 4, labelWidth + 8, fontSize + 4)
-      ctx.fillStyle = colors.canvasLabelText
-      ctx.textBaseline = 'top'
-      ctx.fillText(node.label, bx + 4, by - fontSize - 2)
-    })
-
-    // Dim overlay when a bounding box is selected (spotlight effect)
-    const selectedNode = selectedEntityId ? nodes.find(n => n.id === selectedEntityId && n.bbox) : null
-    if (selectedNode) {
-      const { x: bx, y: by, w: bw, h: bh } = selectedNode.bbox
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
-      // Draw overlay with a hole cut out for the selected bbox
-      ctx.beginPath()
-      ctx.rect(0, 0, imgWidth, imgHeight)          // Outer rect (full image)
-      ctx.rect(bx, by + bh, bw, -bh)               // Inner rect (counter-clockwise = hole)
-      ctx.fill('evenodd')
     }
 
     ctx.restore()
-  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors, loadedImage, imageUrl])
+  }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors, loadedImage, imageUrl, overlayEnabled])
 
   useEffect(() => { draw() }, [draw])
 
@@ -318,6 +321,19 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
           </span>
         </span>
       </div>
+      {/* Overlay toggle */}
+      <label
+        className="absolute top-2 right-2 flex items-center gap-1.5 cursor-pointer select-none"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        <input
+          type="checkbox"
+          checked={!overlayEnabled}
+          onChange={() => setOverlayEnabled((prev) => !prev)}
+          className="accent-[var(--text-accent)] w-3 h-3 cursor-pointer"
+        />
+        <span className="text-[10px] font-medium">Disable Overlay</span>
+      </label>
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
         <div className="grid grid-cols-3 gap-0.5" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
           <div />
