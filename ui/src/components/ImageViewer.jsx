@@ -1,14 +1,16 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
+import { ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LocateFixed, Lock, Unlock } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { useThemeColors } from '../lib/useThemeColors'
 
-export default function ImageViewer({ imageData, width, height }) {
+export default function ImageViewer({ imageData, width, height, onToggleFullscreen, isFullscreen }) {
   const canvasRef = useRef(null)
   const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId } = useGlobalState()
   const colors = useThemeColors()
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
   const [loadedImage, setLoadedImage] = useState(null)
+  const [locked, setLocked] = useState(false)
 
   const nodes = imageData?.nodes ?? []
   const imgWidth = imageData?.width ?? 800
@@ -170,8 +172,9 @@ export default function ImageViewer({ imageData, width, height }) {
 
   // Pan via drag
   const handleMouseDown = useCallback((e) => {
+    if (locked) return
     dragRef.current = { dragging: true, lastX: e.clientX, lastY: e.clientY }
-  }, [])
+  }, [locked])
 
   const handleMouseUp = useCallback(() => {
     dragRef.current.dragging = false
@@ -188,6 +191,7 @@ export default function ImageViewer({ imageData, width, height }) {
 
   // Zoom via wheel
   const handleWheel = useCallback((e) => {
+    if (locked) return
     e.preventDefault()
     const factor = e.deltaY > 0 ? 0.9 : 1.1
     const rect = canvasRef.current.getBoundingClientRect()
@@ -204,22 +208,87 @@ export default function ImageViewer({ imageData, width, height }) {
     })
   }, [])
 
+  const handlePan = useCallback((dx, dy) => {
+    setTransform((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy }))
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    setTransform((prev) => {
+      const factor = 1.4
+      const newScale = Math.min(prev.scale * factor, 5)
+      const ratio = newScale / prev.scale
+      const cx = width / 2
+      const cy = height / 2
+      return { scale: newScale, x: cx - ratio * (cx - prev.x), y: cy - ratio * (cy - prev.y) }
+    })
+  }, [width, height])
+
+  const handleZoomOut = useCallback(() => {
+    setTransform((prev) => {
+      const factor = 1.4
+      const newScale = Math.max(prev.scale / factor, 0.1)
+      const ratio = newScale / prev.scale
+      const cx = width / 2
+      const cy = height / 2
+      return { scale: newScale, x: cx - ratio * (cx - prev.x), y: cy - ratio * (cy - prev.y) }
+    })
+  }, [width, height])
+
+  const handleFitToView = useCallback(() => {
+    const scaleX = width / imgWidth
+    const scaleY = height / imgHeight
+    const fitScale = Math.min(scaleX, scaleY) * 0.9
+    const offsetX = (width - imgWidth * fitScale) / 2
+    const offsetY = (height - imgHeight * fitScale) / 2
+    setTransform({ x: offsetX, y: offsetY, scale: fitScale })
+  }, [width, height, imgWidth, imgHeight])
+
+  const btnStyle = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }
+  const btnActiveStyle = { backgroundColor: 'var(--text-secondary)', color: 'var(--bg-pane)', border: '1px solid var(--text-secondary)' }
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className="cursor-grab active:cursor-grabbing"
-      onClick={handleClick}
-      onMouseMove={handleMouseMove}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={() => {
-        handleMouseUp()
-        setHoveredEntityId(null)
-      }}
-      onMouseMoveCapture={handleDrag}
-      onWheel={handleWheel}
-    />
+    <div className="relative" style={{ width, height }}>
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className="cursor-grab active:cursor-grabbing"
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          handleMouseUp()
+          setHoveredEntityId(null)
+        }}
+        onMouseMoveCapture={handleDrag}
+        onWheel={handleWheel}
+      />
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        <div className="grid grid-cols-3 gap-0.5" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
+          <div />
+          <button onClick={() => handlePan(0, 50)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan up"><ChevronUp size={12} /></button>
+          <div />
+          <button onClick={() => handlePan(50, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan left"><ChevronLeft size={12} /></button>
+          <button onClick={handleFitToView} className="p-1 rounded cursor-pointer" style={btnStyle} title="Fit to view"><LocateFixed size={12} /></button>
+          <button onClick={() => handlePan(-50, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan right"><ChevronRight size={12} /></button>
+          <div />
+          <button onClick={() => handlePan(0, -50)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan down"><ChevronDown size={12} /></button>
+          <div />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <button onClick={() => setLocked((prev) => !prev)} className="p-1 rounded cursor-pointer" style={locked ? btnActiveStyle : btnStyle} title={locked ? 'Unlock view' : 'Lock view'}>
+            {locked ? <Lock size={12} /> : <Unlock size={12} />}
+          </button>
+          <button onClick={handleZoomIn} className="p-1 rounded cursor-pointer" style={btnStyle} title="Zoom in"><ZoomIn size={12} /></button>
+          <button onClick={handleZoomOut} className="p-1 rounded cursor-pointer" style={btnStyle} title="Zoom out"><ZoomOut size={12} /></button>
+          {onToggleFullscreen && (
+            <button onClick={onToggleFullscreen} className="p-1 rounded cursor-pointer" style={btnStyle} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+              {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

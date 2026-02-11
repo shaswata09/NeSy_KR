@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 import sampleDataset from '../data/sampleData.json'
 
 const GlobalStateContext = createContext(null)
@@ -46,21 +46,6 @@ export function StateProvider({ children }) {
   const [selectedEntityId, setSelectedEntityId] = useState(null)
   const [hoveredEntityId, setHoveredEntityId] = useState(null)
 
-  // Zoom / pan sync state
-  // { x, y, k, source } — source is the pane id that initiated the transform
-  const [zoomState, setZoomState] = useState({ x: 0, y: 0, k: 1, source: null })
-
-  // Ref to prevent zoom feedback loops between panes
-  const zoomLockRef = useRef(false)
-
-  const updateZoom = useCallback((x, y, k, source) => {
-    if (zoomLockRef.current) return
-    zoomLockRef.current = true
-    setZoomState({ x, y, k, source })
-    // Release lock after a short delay to allow the receiving pane to apply
-    setTimeout(() => { zoomLockRef.current = false }, 50)
-  }, [])
-
   const selectedImage = dataset.find((d) => d.id === selectedImageId) ?? null
 
   const value = {
@@ -80,10 +65,6 @@ export function StateProvider({ children }) {
     hoveredEntityId,
     setHoveredEntityId,
 
-    // Zoom sync
-    zoomState,
-    updateZoom,
-    zoomLockRef,
   }
 
   return (

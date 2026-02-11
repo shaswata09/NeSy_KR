@@ -1,9 +1,11 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
 
 export default function PaneContainer({ title, children, className, headerLeft, headerRight }) {
+  const paneRef = useRef(null)
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -20,8 +22,23 @@ export default function PaneContainer({ title, children, className, headerLeft, 
     return () => observer.disconnect()
   }, [])
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(document.fullscreenElement === paneRef.current)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      paneRef.current?.requestFullscreen()
+    } else {
+      document.exitFullscreen()
+    }
+  }, [])
+
   return (
     <div
+      ref={paneRef}
       className={cn(
         'flex flex-col rounded-lg border overflow-hidden transition-colors duration-200',
         className
@@ -51,7 +68,7 @@ export default function PaneContainer({ title, children, className, headerLeft, 
       {/* Content area — passes measured dimensions to children */}
       <div ref={containerRef} className="flex-1 relative min-h-0">
         {dimensions.width > 0 && typeof children === 'function'
-          ? children(dimensions)
+          ? children({ ...dimensions, toggleFullscreen, isFullscreen })
           : children}
       </div>
     </div>

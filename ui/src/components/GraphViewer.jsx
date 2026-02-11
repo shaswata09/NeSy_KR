@@ -1,5 +1,6 @@
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
+import { ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LocateFixed, Lock, Unlock } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { useThemeColors } from '../lib/useThemeColors'
 import { DIFF_STATUS } from '../lib/diffStatus'
@@ -10,6 +11,8 @@ export default function GraphViewer({
   paneId = 'default',
   width,
   height,
+  onToggleFullscreen,
+  isFullscreen,
 }) {
   const fgRef = useRef()
   const {
@@ -17,12 +20,11 @@ export default function GraphViewer({
     setSelectedEntityId,
     hoveredEntityId,
     setHoveredEntityId,
-    zoomState,
-    updateZoom,
-    zoomLockRef,
   } = useGlobalState()
 
   const colors = useThemeColors()
+
+  const [locked, setLocked] = useState(false)
 
   // Deep clone graph data so force-graph can mutate it without affecting source
   const data = useMemo(() => ({
@@ -37,20 +39,6 @@ export default function GraphViewer({
     fg.d3Force('charge').strength(-150)
     fg.d3Force('link').distance(80)
   }, [])
-
-  // Respond to zoom sync from other panes
-  useEffect(() => {
-    const fg = fgRef.current
-    if (!fg || !zoomState.source || zoomState.source === paneId) return
-    fg.centerAt(zoomState.x, zoomState.y, 300)
-    fg.zoom(zoomState.k, 300)
-  }, [zoomState, paneId])
-
-  // Emit zoom changes to global state
-  const handleZoom = useCallback(({ k, x, y }) => {
-    if (zoomLockRef.current) return
-    updateZoom(x, y, k, paneId)
-  }, [updateZoom, paneId, zoomLockRef])
 
   const handleNodeClick = useCallback((node) => {
     setSelectedEntityId(node.id)
@@ -197,26 +185,94 @@ export default function GraphViewer({
     }
   }, [hoveredEntityId, isDiffView, colors])
 
+  const handlePan = useCallback((dx, dy) => {
+    const fg = fgRef.current
+    if (!fg) return
+    const center = fg.screen2GraphCoords(width / 2, height / 2)
+    fg.centerAt(center.x + dx, center.y + dy, 300)
+  }, [width, height])
+
+  const handleToggleLock = useCallback(() => {
+    setLocked((prev) => {
+      const fg = fgRef.current
+      if (!fg) return prev
+      if (!prev) {
+        data.nodes.forEach((node) => { node.fx = node.x; node.fy = node.y })
+      } else {
+        data.nodes.forEach((node) => { node.fx = undefined; node.fy = undefined })
+        fg.d3ReheatSimulation()
+      }
+      return !prev
+    })
+  }, [data])
+
+  const handleZoomIn = useCallback(() => {
+    const fg = fgRef.current
+    if (!fg) return
+    fg.zoom(fg.zoom() * 1.4, 300)
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    const fg = fgRef.current
+    if (!fg) return
+    fg.zoom(fg.zoom() / 1.4, 300)
+  }, [])
+
+  const handleFit = useCallback(() => {
+    const fg = fgRef.current
+    if (!fg) return
+    fg.zoomToFit(300, 40)
+  }, [])
+
+  const btnStyle = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }
+  const btnActiveStyle = { backgroundColor: 'var(--text-secondary)', color: 'var(--bg-pane)', border: '1px solid var(--text-secondary)' }
+
   return (
-    <ForceGraph2D
-      ref={fgRef}
-      graphData={data}
-      width={width}
-      height={height}
-      backgroundColor="transparent"
-      nodeCanvasObject={paintNode}
-      nodePointerAreaPaint={(node, color, ctx) => {
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI)
-        ctx.fillStyle = color
-        ctx.fill()
-      }}
-      linkCanvasObject={paintLink}
-      onNodeClick={handleNodeClick}
-      onNodeHover={handleNodeHover}
-      onZoom={handleZoom}
-      cooldownTicks={80}
-      enableNodeDrag={true}
-    />
+    <div className="relative" style={{ width, height }}>
+      <ForceGraph2D
+        ref={fgRef}
+        graphData={data}
+        width={width}
+        height={height}
+        backgroundColor="transparent"
+        nodeCanvasObject={paintNode}
+        nodePointerAreaPaint={(node, color, ctx) => {
+          ctx.beginPath()
+          ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI)
+          ctx.fillStyle = color
+          ctx.fill()
+        }}
+        linkCanvasObject={paintLink}
+        onNodeClick={handleNodeClick}
+        onNodeHover={handleNodeHover}
+        cooldownTicks={80}
+        enableNodeDrag={!locked}
+      />
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        <div className="grid grid-cols-3 gap-0.5" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
+          <div />
+          <button onClick={() => handlePan(0, -40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan up"><ChevronUp size={12} /></button>
+          <div />
+          <button onClick={() => handlePan(-40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan left"><ChevronLeft size={12} /></button>
+          <button onClick={handleFit} className="p-1 rounded cursor-pointer" style={btnStyle} title="Re-center"><LocateFixed size={12} /></button>
+          <button onClick={() => handlePan(40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan right"><ChevronRight size={12} /></button>
+          <div />
+          <button onClick={() => handlePan(0, 40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan down"><ChevronDown size={12} /></button>
+          <div />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <button onClick={handleToggleLock} className="p-1 rounded cursor-pointer" style={locked ? btnActiveStyle : btnStyle} title={locked ? 'Unlock layout' : 'Lock layout'}>
+            {locked ? <Lock size={12} /> : <Unlock size={12} />}
+          </button>
+          <button onClick={handleZoomIn} className="p-1 rounded cursor-pointer" style={btnStyle} title="Zoom in"><ZoomIn size={12} /></button>
+          <button onClick={handleZoomOut} className="p-1 rounded cursor-pointer" style={btnStyle} title="Zoom out"><ZoomOut size={12} /></button>
+          {onToggleFullscreen && (
+            <button onClick={onToggleFullscreen} className="p-1 rounded cursor-pointer" style={btnStyle} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+              {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

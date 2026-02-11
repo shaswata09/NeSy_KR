@@ -157,6 +157,15 @@ body {
   animation: bbox-glow 1s ease-in-out infinite;
 }
 
+/* Fullscreen viewer */
+:fullscreen {
+  background-color: var(--bg-pane);
+}
+
+::backdrop {
+  background-color: var(--bg-pane);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

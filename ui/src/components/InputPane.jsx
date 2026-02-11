@@ -44,12 +44,14 @@ export default function InputPane() {
         <ViewModeToggle modes={modes} value={activeMode} onChange={setViewMode} />
       }
     >
-      {({ width, height }) =>
+      {({ width, height, toggleFullscreen, isFullscreen }) =>
         activeMode === 'IMAGE' ? (
           <ImageViewer
             imageData={{ ...gt, width: selectedImage.width, height: selectedImage.height, imageUrl: selectedImage.imageUrl }}
             width={width}
             height={height}
+            onToggleFullscreen={toggleFullscreen}
+            isFullscreen={isFullscreen}
           />
         ) : activeMode === 'GRAPH' ? (
           <GraphViewer
@@ -57,6 +59,8 @@ export default function InputPane() {
             paneId="input"
             width={width}
             height={height}
+            onToggleFullscreen={toggleFullscreen}
+            isFullscreen={isFullscreen}
           />
         ) : activeMode === 'ATTRIBUTES' ? (
           <AttributesViewer attributes={gt.attributes} nodes={gt.nodes} />

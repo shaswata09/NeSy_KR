@@ -98,7 +98,7 @@ export default function PredictionPane() {
       }
       headerRight={<DiffLegend />}
     >
-      {({ width, height }) => (
+      {({ width, height, toggleFullscreen, isFullscreen }) => (
         <div className="relative" style={{ width, height }}>
           {activeMode === "IMAGE" ? (
             <ImageViewer
@@ -110,6 +110,8 @@ export default function PredictionPane() {
               }}
               width={width}
               height={height}
+              onToggleFullscreen={toggleFullscreen}
+              isFullscreen={isFullscreen}
             />
           ) : activeMode === "GRAPH" ? (
             <GraphViewer
@@ -118,6 +120,8 @@ export default function PredictionPane() {
               paneId="prediction"
               width={width}
               height={height}
+              onToggleFullscreen={toggleFullscreen}
+              isFullscreen={isFullscreen}
             />
           ) : activeMode === "ATTRIBUTES" ? (
             <AttributesViewer
