@@ -1,10 +1,10 @@
 import cytoscape from 'cytoscape';
-import cola from 'cytoscape-cola';
+import d3Force from 'cytoscape-d3-force';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Lock, Maximize2, Minimize2, Unlock, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 
-cytoscape.use(cola);
+cytoscape.use(d3Force);
 
 import { useGlobalState } from '../context/GlobalState';
 import { useThemeColors } from '../lib/useThemeColors';
@@ -27,30 +27,7 @@ export default function GraphViewer({
   const colors = useThemeColors();
   const [locked, setLocked] = useState(false);
 
-  // Convert graphData to Cytoscape elements
-  const elements = useMemo(() => {
-    const nodes = graphData.nodes.map((n) => ({
-      data: { 
-        id: n.id, 
-        label: n.label || n.id,
-        status: n.status,
-        isDiffView
-      }
-    }));
 
-    const edges = graphData.links.map((l, i) => ({
-      data: {
-        id: `e-${i}`,
-        source: typeof l.source === 'object' ? l.source.id : l.source,
-        target: typeof l.target === 'object' ? l.target.id : l.target,
-        label: l.label,
-        status: l.status,
-        isDiffView
-      }
-    }));
-
-    return [...nodes, ...edges];
-  }, [graphData, isDiffView]);
 
   const stylesheet = useMemo(() => [
     {
@@ -171,45 +148,98 @@ export default function GraphViewer({
     }
   ], [colors]);
 
-  const layout = {
-    name: 'cola',
-    animate: true,
-    refresh: 1,
-    maxSimulationTime: 4000,
-    ungrabifyWhileSimulating: false,
-    fit: true,
-    padding: 30,
-    randomize: false,
-    avoidOverlap: true,
-    handleDisconnected: true,
-    convergenceThreshold: 0.01,
-    nodeSpacing: 40,
-    edgeLength: 100,
-    infinite: true // Keep it reactive to dragging
-  };
+  // Convert graphData to Cytoscape elements (for rendering)
+  const elements = useMemo(() => {
+    const nodes = graphData.nodes.map((n) => ({
+      data: { 
+        id: n.id, 
+        label: n.label || n.id,
+        status: n.status,
+        isDiffView
+      }
+    }));
 
+    const edges = graphData.links.map((l, i) => ({
+      data: {
+        id: `e-${i}`,
+        source: typeof l.source === 'object' ? l.source.id : l.source,
+        target: typeof l.target === 'object' ? l.target.id : l.target,
+        label: l.label,
+        status: l.status,
+        isDiffView
+      }
+    }));
+
+    return [...nodes, ...edges];
+  }, [graphData, isDiffView]);
+
+  const d3Config = useMemo(() => ({
+    name: 'd3-force',
+    animate: true,
+    fixedAfterDragging: true,
+    ungrabifyWhileSimulating: false,
+    fit: false,
+    padding: 50,
+    linkId: (d) => d.id,
+    linkDistance: 200,          // Long edges → more room, fewer crossings
+    manyBodyStrength: -3000,    // Very strong repulsion → no overlap
+    manyBodyDistanceMin: 1,
+    manyBodyDistanceMax: 1500,
+    collideRadius: 80,          // Large exclusion zone around each node
+    collideStrength: 1,         // Full enforcement
+    collideIterations: 4,       // Multiple passes per tick for accuracy
+    alpha: 1,
+    alphaMin: 0.001,
+    alphaDecay: 0.1,             // Very fast cooling
+    velocityDecay: 0.6,          // Heavy damping → almost no bouncing
+    infinite: true,
+    randomize: true
+  }), []);
+
+  // Refs for stable state access
+  const setSelectedRef = useRef(setSelectedEntityId);
+  setSelectedRef.current = setSelectedEntityId;
+  const setHoveredRef = useRef(setHoveredEntityId);
+  setHoveredRef.current = setHoveredEntityId;
+
+  // 1. Setup listeners (Once)
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
-    const handleSelect = (evt) => setSelectedEntityId(evt.target.id());
-    const handleUnselect = () => setSelectedEntityId(null);
+    const handleSelect = (evt) => setSelectedRef.current(evt.target.id());
+    const handleUnselect = () => setSelectedRef.current(null);
+    
     const handleMouseOver = (evt) => {
         const node = evt.target;
-        setHoveredEntityId(node.id());
+        setHoveredRef.current(node.id());
         node.neighborhood().addClass('hovered-adj');
         node.connectedEdges().addClass('highlighted');
     };
+    
     const handleMouseOut = (evt) => {
-        setHoveredEntityId(null);
+        setHoveredRef.current(null);
         evt.target.neighborhood().removeClass('hovered-adj');
         evt.target.connectedEdges().removeClass('highlighted');
     };
 
-    // Sticky behavior: set node to fixed (locked) after drag
+    // Sticky Logic for D3
     const handleDragFree = (evt) => {
-        evt.target.lock();
-        evt.target.addClass('sticky');
+        const node = evt.target;
+        const pos = node.position();
+        // Set fx/fy to fix node in place for D3
+        node.data('fx', pos.x);
+        node.data('fy', pos.y);
+        node.addClass('sticky');
+    };
+
+    const handleGrab = (evt) => {
+        const node = evt.target;
+        if (node.isNode && node.isNode()) {
+            // Unset fx/fy so it can move freely
+            node.data('fx', null);
+            node.data('fy', null);
+        }
     };
 
     cy.on('tap', 'node', handleSelect);
@@ -217,6 +247,7 @@ export default function GraphViewer({
     cy.on('mouseover', 'node', handleMouseOver);
     cy.on('mouseout', 'node', handleMouseOut);
     cy.on('dragfree', 'node', handleDragFree);
+    cy.on('grab', 'node', handleGrab);
 
     return () => {
       cy.off('tap', 'node', handleSelect);
@@ -224,8 +255,26 @@ export default function GraphViewer({
       cy.off('mouseover', 'node', handleMouseOver);
       cy.off('mouseout', 'node', handleMouseOut);
       cy.off('dragfree', 'node', handleDragFree);
+      cy.off('grab', 'node', handleGrab);
     };
-  }, [setSelectedEntityId, setHoveredEntityId]);
+  }, []);
+
+  // One-time fit on new data load
+  const hasFittedRef = useRef(false);
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || elements.length === 0) return;
+    hasFittedRef.current = false;
+    const fitOnce = () => {
+      if (!hasFittedRef.current) {
+        hasFittedRef.current = true;
+        setTimeout(() => {
+          cy.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 500 });
+        }, 800); // Wait for simulation to spread out
+      }
+    };
+    fitOnce();
+  }, [elements]);
 
   // Handle selected entity highlight from external changes
   useEffect(() => {
@@ -247,20 +296,39 @@ export default function GraphViewer({
   }, []);
 
   const handleFit = useCallback(() => {
-    if (cyRef.current) cyRef.current.fit(null, 50);
+    if (cyRef.current) {
+      cyRef.current.animate({
+        fit: { eles: cyRef.current.elements(), padding: 50 },
+        duration: 500
+      });
+    }
   }, []);
 
   const handleZoomIn = useCallback(() => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 1.2);
+    if (cyRef.current) {
+      const cy = cyRef.current;
+      cy.zoom({
+        level: cy.zoom() * 1.2,
+        renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 }
+      });
+    }
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() / 1.2);
+    if (cyRef.current) {
+      const cy = cyRef.current;
+      cy.zoom({
+        level: cy.zoom() / 1.2,
+        renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 }
+      });
+    }
   }, []);
 
-  const handlePan = (dx, dy) => {
-    if (cyRef.current) cyRef.current.panBy({ x: dx, y: dy });
-  };
+  const handlePan = useCallback((dx, dy) => {
+    if (cyRef.current) {
+      cyRef.current.panBy({ x: dx, y: dy });
+    }
+  }, []);
 
   const btnStyle = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' };
   const btnActiveStyle = { backgroundColor: 'var(--text-secondary)', color: 'var(--bg-pane)', border: '1px solid var(--text-secondary)' };
@@ -271,25 +339,23 @@ export default function GraphViewer({
         elements={elements}
         style={{ width: '100%', height: '100%' }}
         stylesheet={stylesheet}
-        layout={layout}
+        layout={d3Config}
         cy={(cy) => { cyRef.current = cy; }}
         className="bg-transparent"
-        zoom={1}
-        pan={{ x: 0, y: 0 }}
-        minZoom={0.1}
-        maxZoom={5}
+        minZoom={0.05}
+        maxZoom={10}
       />
       
       <div className="absolute bottom-2 right-2 flex items-center gap-2 pointer-events-none">
         <div className="grid grid-cols-3 gap-0.5 pointer-events-auto" style={{ gridTemplateRows: 'repeat(3, auto)' }}>
           <div />
-          <button onClick={() => handlePan(0, -40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan up"><ChevronUp size={12} /></button>
+          <button onClick={() => handlePan(0, 40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan up"><ChevronUp size={12} /></button>
           <div />
-          <button onClick={() => handlePan(-40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan left"><ChevronLeft size={12} /></button>
+          <button onClick={() => handlePan(40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan left"><ChevronLeft size={12} /></button>
           <button onClick={handleFit} className="p-1 rounded cursor-pointer" style={btnStyle} title="Re-center"><LocateFixed size={12} /></button>
-          <button onClick={() => handlePan(40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan right"><ChevronRight size={12} /></button>
+          <button onClick={() => handlePan(-40, 0)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan right"><ChevronRight size={12} /></button>
           <div />
-          <button onClick={() => handlePan(0, 40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan down"><ChevronDown size={12} /></button>
+          <button onClick={() => handlePan(0, -40)} className="p-1 rounded cursor-pointer" style={btnStyle} title="Pan down"><ChevronDown size={12} /></button>
           <div />
         </div>
         <div className="flex flex-col gap-0.5 pointer-events-auto">
