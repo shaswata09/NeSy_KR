@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { cn } from '../lib/cn'
 
-export default function PaneContainer({ title, children, className, headerRight }) {
+export default function PaneContainer({ title, children, className, headerLeft, headerRight }) {
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
@@ -36,12 +36,15 @@ export default function PaneContainer({ title, children, className, headerRight 
         className="flex items-center justify-between px-3 py-2 border-b shrink-0"
         style={{ borderColor: 'var(--border-secondary)' }}
       >
-        <h3
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          {title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {title}
+          </h3>
+          {headerLeft}
+        </div>
         {headerRight && <div className="flex items-center gap-1">{headerRight}</div>}
       </div>
 

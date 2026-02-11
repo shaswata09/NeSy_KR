@@ -1,10 +1,35 @@
+import { useState, useEffect, useMemo } from 'react'
 import { useGlobalState } from '../context/GlobalState'
+import { getAvailableModes } from '../lib/getAvailableModes'
 import PaneContainer from './PaneContainer'
 import GraphViewer from './GraphViewer'
 import ImageViewer from './ImageViewer'
+import AttributesViewer from './AttributesViewer'
+import ViewModeToggle from './ViewModeToggle'
 
 export default function InputPane() {
-  const { viewMode, selectedImage } = useGlobalState()
+  const { selectedImage } = useGlobalState()
+  const [viewMode, setViewMode] = useState('IMAGE')
+
+  const gt = selectedImage?.groundTruth
+  const modes = useMemo(
+    () =>
+      gt
+        ? getAvailableModes({
+            imageUrl: selectedImage.imageUrl,
+            nodes: gt.nodes,
+            attributes: gt.attributes,
+          })
+        : [],
+    [gt, selectedImage?.imageUrl]
+  )
+
+  // Auto-correct if current mode is no longer available
+  useEffect(() => {
+    if (modes.length > 0 && !modes.includes(viewMode)) {
+      setViewMode(modes[0])
+    }
+  }, [modes, viewMode])
 
   if (!selectedImage) {
     return (
@@ -19,18 +44,11 @@ export default function InputPane() {
     )
   }
 
-  const gt = selectedImage.groundTruth
-
   return (
     <PaneContainer
       title="Input Source"
-      headerRight={
-        <span
-          className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-          style={{ color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-elevated)' }}
-        >
-          {viewMode}
-        </span>
+      headerLeft={
+        <ViewModeToggle modes={modes} value={viewMode} onChange={setViewMode} />
       }
     >
       {({ width, height }) =>
@@ -40,13 +58,15 @@ export default function InputPane() {
             width={width}
             height={height}
           />
-        ) : (
+        ) : viewMode === 'GRAPH' ? (
           <GraphViewer
             graphData={gt}
             paneId="input"
             width={width}
             height={height}
           />
+        ) : (
+          <AttributesViewer attributes={gt.attributes} nodes={gt.nodes} />
         )
       }
     </PaneContainer>

@@ -1,4 +1,4 @@
-import { Image, ScanEye, ChevronRight, Eye, GitGraph, Sun, Moon } from 'lucide-react'
+import { Image, ScanEye, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { cn } from '../lib/cn'
 
@@ -8,8 +8,6 @@ export default function Sidebar({ className, style }) {
     selectedImageId,
     setSelectedImageId,
     selectedImage,
-    viewMode,
-    setViewMode,
     theme,
     toggleTheme,
   } = useGlobalState()
@@ -50,59 +48,6 @@ export default function Sidebar({ className, style }) {
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* View Mode Toggle */}
-      <div
-        className="flex gap-1 px-3 py-2 border-b"
-        style={{ borderColor: 'var(--border-secondary)' }}
-      >
-        <button
-          onClick={() => setViewMode('IMAGE')}
-          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: viewMode === 'IMAGE' ? 'var(--bg-active-strong)' : 'transparent',
-            color: viewMode === 'IMAGE' ? 'var(--text-inverse)' : 'var(--text-secondary)',
-          }}
-          onMouseEnter={(e) => {
-            if (viewMode !== 'IMAGE') {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (viewMode !== 'IMAGE') {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }
-          }}
-        >
-          <Eye className="w-3.5 h-3.5" />
-          Image
-        </button>
-        <button
-          onClick={() => setViewMode('GRAPH')}
-          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: viewMode === 'GRAPH' ? 'var(--bg-active-strong)' : 'transparent',
-            color: viewMode === 'GRAPH' ? 'var(--text-inverse)' : 'var(--text-secondary)',
-          }}
-          onMouseEnter={(e) => {
-            if (viewMode !== 'GRAPH') {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (viewMode !== 'GRAPH') {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }
-          }}
-        >
-          <GitGraph className="w-3.5 h-3.5" />
-          Graph
         </button>
       </div>
 

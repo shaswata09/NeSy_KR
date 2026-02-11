@@ -46,9 +46,6 @@ export function StateProvider({ children }) {
   const [selectedEntityId, setSelectedEntityId] = useState(null)
   const [hoveredEntityId, setHoveredEntityId] = useState(null)
 
-  // View mode for InputPane: 'IMAGE' | 'GRAPH'
-  const [viewMode, setViewMode] = useState('IMAGE')
-
   // Zoom / pan sync state
   // { x, y, k, source } — source is the pane id that initiated the transform
   const [zoomState, setZoomState] = useState({ x: 0, y: 0, k: 1, source: null })
@@ -82,10 +79,6 @@ export function StateProvider({ children }) {
     setSelectedEntityId,
     hoveredEntityId,
     setHoveredEntityId,
-
-    // View mode
-    viewMode,
-    setViewMode,
 
     // Zoom sync
     zoomState,
