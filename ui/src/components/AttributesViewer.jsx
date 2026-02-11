@@ -1,7 +1,7 @@
 import { useGlobalState } from '../context/GlobalState'
 
 export default function AttributesViewer({ attributes, nodes, isDiffView }) {
-  const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId } = useGlobalState()
+  const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId, setSelectedEdgeId } = useGlobalState()
 
   if (!attributes || attributes.length === 0) {
     return (
@@ -80,7 +80,11 @@ export default function AttributesViewer({ attributes, nodes, isDiffView }) {
                 key={`${attr.entityId}-${attr.attribute}-${i}`}
                 className="cursor-pointer transition-colors"
                 style={{ backgroundColor: rowBg }}
-                onClick={() => setSelectedEntityId(attr.entityId === selectedEntityId ? null : attr.entityId)}
+                onClick={() => {
+                  const nextId = attr.entityId === selectedEntityId ? null : attr.entityId;
+                  setSelectedEntityId(nextId);
+                  setSelectedEdgeId(null);
+                }}
                 onMouseEnter={() => setHoveredEntityId(attr.entityId)}
                 onMouseLeave={() => setHoveredEntityId(null)}
               >

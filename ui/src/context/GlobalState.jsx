@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useCallback, useContext, useState } from 'react'
 import sampleDataset from '../data/sampleData.json'
 
 const GlobalStateContext = createContext(null)
@@ -44,6 +44,7 @@ export function StateProvider({ children }) {
 
   // Entity interaction
   const [selectedEntityId, setSelectedEntityId] = useState(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState(null)
   const [hoveredEntityId, setHoveredEntityId] = useState(null)
 
   const selectedImage = dataset.find((d) => d.id === selectedImageId) ?? null
@@ -62,6 +63,8 @@ export function StateProvider({ children }) {
     // Entity
     selectedEntityId,
     setSelectedEntityId,
+    selectedEdgeId,
+    setSelectedEdgeId,
     hoveredEntityId,
     setHoveredEntityId,
 

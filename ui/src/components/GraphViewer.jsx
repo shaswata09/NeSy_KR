@@ -19,10 +19,12 @@ export default function GraphViewer({
 }) {
   const cyRef = useRef(null);
   const {
+    selectedEntityId,
     setSelectedEntityId,
+    selectedEdgeId,
+    setSelectedEdgeId,
     hoveredEntityId,
-    setHoveredEntityId,
-    selectedEntityId
+    setHoveredEntityId
   } = useGlobalState();
   const colors = useThemeColors();
   const [locked, setLocked] = useState(false);
@@ -193,12 +195,15 @@ export default function GraphViewer({
       }
     }));
 
-    const edges = graphData.links.map((l, i) => {
+    const edges = graphData.links.map((l) => {
       const source = typeof l.source === 'object' ? l.source.id : l.source;
       const target = typeof l.target === 'object' ? l.target.id : l.target;
+      // Stable ID based on connection content, not list index
+      const edgeId = `e-${source}-${target}-${l.label || 'rel'}`;
+      
       return {
         data: {
-          id: `e-${source}-${target}-${l.label || i}`,
+          id: edgeId,
           source,
           target,
           label: l.label,
@@ -235,8 +240,14 @@ export default function GraphViewer({
   }), []);
 
   // Refs for stable state access
+
   const setSelectedRef = useRef(setSelectedEntityId);
   setSelectedRef.current = setSelectedEntityId;
+  const setSelectedEdgeRef = useRef(setSelectedEdgeId);
+  setSelectedEdgeRef.current = setSelectedEdgeId;
+
+
+
   const setHoveredRef = useRef(setHoveredEntityId);
   setHoveredRef.current = setHoveredEntityId;
 
@@ -245,8 +256,14 @@ export default function GraphViewer({
     const cy = cyRef.current;
     if (!cy) return;
 
-    const handleSelect = (evt) => setSelectedRef.current(evt.target.id());
-    const handleUnselect = () => setSelectedRef.current(null);
+    const handleSelect = (evt) => {
+        setSelectedEdgeRef.current(null);
+        setSelectedRef.current(evt.target.id());
+    };
+    const handleUnselect = () => {
+        setSelectedRef.current(null);
+        setSelectedEdgeRef.current(null);
+    };
     
     const handleMouseOver = (evt) => {
         const node = evt.target;
@@ -287,22 +304,12 @@ export default function GraphViewer({
     cy.on('dragfree', 'node', handleDragFree);
     cy.on('grab', 'node', handleGrab);
 
-    // Edge click → highlight both connected nodes
+    // Edge click → highlight connected nodes. Highlights handled by useEffect.
     const handleEdgeTap = (evt) => {
       const edge = evt.target;
       const sourceNode = edge.source();
-      const targetNode = edge.target();
-
-      // Clear previous and apply new highlights
-      cy.elements().removeClass('selected-adj selected-edge dimmed');
-      cy.nodes().unselect();
-      sourceNode.select();
-      targetNode.addClass('selected-adj');
-      edge.addClass('selected-edge');
-      // Dim everything else
-      cy.elements().not(sourceNode).not(targetNode).not(edge).addClass('dimmed');
-      // Set the source as the selected entity for cross-component sync
       setSelectedRef.current(sourceNode.id());
+      setSelectedEdgeRef.current(edge.id());
     };
 
     // Edge hover effects
@@ -405,7 +412,7 @@ export default function GraphViewer({
     };
   }, [elements, d3Config]);
 
-  // Handle selected entity highlight from external changes (e.g. image bounding box)
+  // Handle selected entity highlight from external changes (e.g. image bounding box or other panels)
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -414,6 +421,34 @@ export default function GraphViewer({
     cy.elements().removeClass('selected-adj selected-edge dimmed');
     cy.nodes().unselect();
 
+    // Priority 1: Edge selection (comes from another panel or local edge click)
+    if (selectedEdgeId) {
+      let selectedEdge = cy.$(`#${selectedEdgeId}`);
+      
+      // Fallback: If exact ID match fails (e.g. data source slightly changed), 
+      // try to find any edge connecting the same source and target if we can parse the ID
+      if (selectedEdge.length === 0 && selectedEdgeId.startsWith('e-')) {
+        const parts = selectedEdgeId.split('-');
+        if (parts.length >= 3) {
+          const src = parts[1];
+          const tgt = parts[2];
+          selectedEdge = cy.edges(`edge[source="${src}"][target="${tgt}"]`).first();
+        }
+      }
+
+      if (selectedEdge.length > 0) {
+        const sourceNode = selectedEdge.source();
+        const targetNode = selectedEdge.target();
+        
+        sourceNode.select();
+        targetNode.addClass('selected-adj');
+        selectedEdge.addClass('selected-edge');
+        cy.elements().not(sourceNode).not(targetNode).not(selectedEdge).addClass('dimmed');
+        return;
+      }
+    }
+
+    // Priority 2: Node selection
     if (selectedEntityId) {
       const selectedNode = cy.$(`#${selectedEntityId}`);
       if (selectedNode.length > 0) {
@@ -427,7 +462,7 @@ export default function GraphViewer({
         cy.elements().not(selectedNode).not(connectedEdges).not(neighborNodes).addClass('dimmed');
       }
     }
-  }, [selectedEntityId]);
+  }, [selectedEntityId, selectedEdgeId]);
 
   const handleToggleLock = useCallback(() => {
     setLocked((prev) => {

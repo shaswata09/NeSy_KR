@@ -5,7 +5,7 @@ import { useThemeColors } from '../lib/useThemeColors'
 
 export default function ImageViewer({ imageData, width, height, onToggleFullscreen, isFullscreen }) {
   const canvasRef = useRef(null)
-  const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId } = useGlobalState()
+  const { hoveredEntityId, selectedEntityId, setHoveredEntityId, setSelectedEntityId, setSelectedEdgeId } = useGlobalState()
   const colors = useThemeColors()
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
@@ -164,6 +164,7 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
 
     if (hits.length === 0) {
       setSelectedEntityId(null)
+      setSelectedEdgeId(null)
       return
     }
 
@@ -171,7 +172,8 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
     const currentIdx = hits.findIndex(n => n.id === selectedEntityId)
     const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % hits.length : 0
     setSelectedEntityId(hits[nextIdx].id)
-  }, [nodes, transform, setSelectedEntityId, selectedEntityId])
+    setSelectedEdgeId(null)
+  }, [nodes, transform, setSelectedEntityId, setSelectedEdgeId, selectedEntityId])
 
   // Hit-test on mouse move for hover
   const handleMouseMove = useCallback((e) => {
