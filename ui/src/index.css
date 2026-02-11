@@ -28,34 +28,34 @@
   --accent-blue: #3b82f6;
 
   /* Diff status */
-  --diff-correct: #16a34a;
-  --diff-missing: #9ca3af;
-  --diff-hallucinated: #dc2626;
-  --diff-correct-bg: rgba(22, 163, 74, 0.1);
-  --diff-missing-bg: rgba(156, 163, 175, 0.1);
-  --diff-hallucinated-bg: rgba(220, 38, 38, 0.1);
-  --diff-correct-text: #15803d;
-  --diff-missing-text: #6b7280;
-  --diff-hallucinated-text: #dc2626;
+  --diff-correct: #4ade80;
+  --diff-missing: #a1a1aa;
+  --diff-hallucinated: #f87171;
+  --diff-correct-bg: rgba(74, 222, 128, 0.08);
+  --diff-missing-bg: rgba(161, 161, 170, 0.08);
+  --diff-hallucinated-bg: rgba(248, 113, 113, 0.08);
+  --diff-correct-text: #22c55e;
+  --diff-missing-text: #a1a1aa;
+  --diff-hallucinated-text: #ef4444;
 
   /* Highlight */
-  --highlight-glow: #3b82f6;
-  --highlight-hover: #ca8a04;
-  --highlight-selected: #9333ea;
+  --highlight-glow: #818cf8;
+  --highlight-hover: #a78bfa;
+  --highlight-selected: #c084fc;
 
   /* Canvas */
   --canvas-bg: #f8fafc;
   --canvas-grid: #e2e8f0;
-  --canvas-node-default: #3b82f6;
-  --canvas-link-default: #94a3b8;
-  --canvas-text: #0f172a;
-  --canvas-text-muted: #64748b;
-  --canvas-text-highlight: #0f172a;
-  --canvas-label-bg: rgba(59, 130, 246, 0.12);
-  --canvas-label-bg-hover: rgba(202, 138, 4, 0.15);
-  --canvas-label-text: #1e40af;
-  --canvas-hover-fill: rgba(202, 138, 4, 0.06);
-  --canvas-hallucinated-label: #dc2626;
+  --canvas-node-default: #818cf8;
+  --canvas-link-default: #c7d2e0;
+  --canvas-text: #334155;
+  --canvas-text-muted: #94a3b8;
+  --canvas-text-highlight: #1e293b;
+  --canvas-label-bg: rgba(129, 140, 248, 0.1);
+  --canvas-label-bg-hover: rgba(167, 139, 250, 0.12);
+  --canvas-label-text: #6366f1;
+  --canvas-hover-fill: rgba(167, 139, 250, 0.06);
+  --canvas-hallucinated-label: #f87171;
 
   /* Scrollbar */
   --scrollbar-thumb: #cbd5e1;
@@ -90,33 +90,33 @@
   --accent-blue: #3b82f6;
 
   /* Diff status */
-  --diff-correct: #22c55e;
-  --diff-missing: #94a3b8;
-  --diff-hallucinated: #ef4444;
-  --diff-correct-bg: rgba(34, 197, 94, 0.2);
-  --diff-missing-bg: rgba(148, 163, 184, 0.2);
-  --diff-hallucinated-bg: rgba(239, 68, 68, 0.2);
-  --diff-correct-text: #4ade80;
-  --diff-missing-text: #94a3b8;
-  --diff-hallucinated-text: #f87171;
+  --diff-correct: #86efac;
+  --diff-missing: #71717a;
+  --diff-hallucinated: #fca5a5;
+  --diff-correct-bg: rgba(134, 239, 172, 0.12);
+  --diff-missing-bg: rgba(113, 113, 122, 0.12);
+  --diff-hallucinated-bg: rgba(252, 165, 165, 0.12);
+  --diff-correct-text: #86efac;
+  --diff-missing-text: #a1a1aa;
+  --diff-hallucinated-text: #fca5a5;
 
   /* Highlight */
-  --highlight-glow: #3b82f6;
-  --highlight-hover: #facc15;
-  --highlight-selected: #c084fc;
+  --highlight-glow: #818cf8;
+  --highlight-hover: #c4b5fd;
+  --highlight-selected: #d8b4fe;
 
   /* Canvas */
   --canvas-bg: #1e293b;
   --canvas-grid: #334155;
-  --canvas-node-default: #60a5fa;
+  --canvas-node-default: #a5b4fc;
   --canvas-link-default: #475569;
   --canvas-text: #cbd5e1;
   --canvas-text-muted: #64748b;
-  --canvas-text-highlight: #ffffff;
-  --canvas-label-bg: rgba(59, 130, 246, 0.85);
-  --canvas-label-bg-hover: rgba(250, 204, 21, 0.9);
-  --canvas-label-text: #ffffff;
-  --canvas-hover-fill: rgba(250, 204, 21, 0.08);
+  --canvas-text-highlight: #f1f5f9;
+  --canvas-label-bg: rgba(165, 180, 252, 0.15);
+  --canvas-label-bg-hover: rgba(196, 181, 253, 0.15);
+  --canvas-label-text: #c7d2fe;
+  --canvas-hover-fill: rgba(196, 181, 253, 0.06);
   --canvas-hallucinated-label: #fca5a5;
 
   /* Scrollbar */

@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape';
 import d3Force from 'cytoscape-d3-force';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Lock, Maximize2, Minimize2, Unlock, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Lock, Maximize2, Minimize2, Unlock, Waypoints, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 
@@ -145,6 +145,38 @@ export default function GraphViewer({
             'target-arrow-color': colors.highlightHover,
             'z-index': 5
         }
+    },
+    // Selection highlighting (from image bounding box)
+    {
+        selector: 'node.selected-adj',
+        style: {
+            'border-width': 2,
+            'border-color': colors.highlightSelected,
+            'opacity': 1
+        }
+    },
+    {
+        selector: 'edge.selected-edge',
+        style: {
+            'line-color': colors.highlightSelected,
+            'width': 2.5,
+            'target-arrow-color': colors.highlightSelected,
+            'z-index': 5,
+            'opacity': 1
+        }
+    },
+    // Dim non-selected elements when something is selected
+    {
+        selector: 'node.dimmed',
+        style: {
+            'opacity': 0.25
+        }
+    },
+    {
+        selector: 'edge.dimmed',
+        style: {
+            'opacity': 0.15
+        }
     }
   ], [colors]);
 
@@ -249,6 +281,42 @@ export default function GraphViewer({
     cy.on('dragfree', 'node', handleDragFree);
     cy.on('grab', 'node', handleGrab);
 
+    // Edge click → highlight both connected nodes
+    const handleEdgeTap = (evt) => {
+      const edge = evt.target;
+      const sourceNode = edge.source();
+      const targetNode = edge.target();
+
+      // Clear previous and apply new highlights
+      cy.elements().removeClass('selected-adj selected-edge dimmed');
+      cy.nodes().unselect();
+      sourceNode.select();
+      targetNode.addClass('selected-adj');
+      edge.addClass('selected-edge');
+      // Dim everything else
+      cy.elements().not(sourceNode).not(targetNode).not(edge).addClass('dimmed');
+      // Set the source as the selected entity for cross-component sync
+      setSelectedRef.current(sourceNode.id());
+    };
+
+    // Edge hover effects
+    const handleEdgeMouseOver = (evt) => {
+      const edge = evt.target;
+      edge.addClass('highlighted');
+      edge.source().addClass('hovered-adj');
+      edge.target().addClass('hovered-adj');
+    };
+    const handleEdgeMouseOut = (evt) => {
+      const edge = evt.target;
+      edge.removeClass('highlighted');
+      edge.source().removeClass('hovered-adj');
+      edge.target().removeClass('hovered-adj');
+    };
+
+    cy.on('tap', 'edge', handleEdgeTap);
+    cy.on('mouseover', 'edge', handleEdgeMouseOver);
+    cy.on('mouseout', 'edge', handleEdgeMouseOut);
+
     return () => {
       cy.off('tap', 'node', handleSelect);
       cy.off('tap', handleUnselect);
@@ -256,6 +324,9 @@ export default function GraphViewer({
       cy.off('mouseout', 'node', handleMouseOut);
       cy.off('dragfree', 'node', handleDragFree);
       cy.off('grab', 'node', handleGrab);
+      cy.off('tap', 'edge', handleEdgeTap);
+      cy.off('mouseover', 'edge', handleEdgeMouseOver);
+      cy.off('mouseout', 'edge', handleEdgeMouseOut);
     };
   }, []);
 
@@ -276,13 +347,27 @@ export default function GraphViewer({
     fitOnce();
   }, [elements]);
 
-  // Handle selected entity highlight from external changes
+  // Handle selected entity highlight from external changes (e.g. image bounding box)
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    // Clear previous selection highlights
+    cy.elements().removeClass('selected-adj selected-edge dimmed');
     cy.nodes().unselect();
+
     if (selectedEntityId) {
-      cy.$(`#${selectedEntityId}`).select();
+      const selectedNode = cy.$(`#${selectedEntityId}`);
+      if (selectedNode.length > 0) {
+        selectedNode.select();
+        // Highlight connected edges and neighbor nodes
+        const connectedEdges = selectedNode.connectedEdges();
+        const neighborNodes = selectedNode.neighborhood('node');
+        connectedEdges.addClass('selected-edge');
+        neighborNodes.addClass('selected-adj');
+        // Dim everything else
+        cy.elements().not(selectedNode).not(connectedEdges).not(neighborNodes).addClass('dimmed');
+      }
     }
   }, [selectedEntityId]);
 
@@ -302,6 +387,49 @@ export default function GraphViewer({
         duration: 500
       });
     }
+  }, []);
+
+  const handleAutoArrange = useCallback(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    // Clear all fixed positions so nodes can move freely
+    cy.nodes().forEach(n => {
+      n.data('fx', null);
+      n.data('fy', null);
+      n.removeClass('sticky');
+    });
+    // Run a compact but natural layout
+    const compactLayout = cy.makeLayout({
+      name: 'd3-force',
+      animate: true,
+      fit: false,
+      fixedAfterDragging: false,
+      ungrabifyWhileSimulating: false,
+      padding: 30,
+      linkId: (d) => d.id,
+      linkDistance: 120,         // Moderate edges for natural compactness
+      manyBodyStrength: -1500,   // Balanced repulsion (not forced)
+      manyBodyDistanceMin: 1,
+      manyBodyDistanceMax: 800,
+      collideRadius: 50,
+      collideStrength: 1,
+      collideIterations: 4,
+      alpha: 1,
+      alphaMin: 0.05,
+      alphaDecay: 0.1,
+      velocityDecay: 0.6,
+      randomize: false
+    });
+    compactLayout.run();
+    // After settling, pin all nodes and fit
+    setTimeout(() => {
+      cy.nodes().forEach(n => {
+        const pos = n.position();
+        n.data('fx', pos.x);
+        n.data('fy', pos.y);
+      });
+      cy.animate({ fit: { eles: cy.elements(), padding: 40 }, duration: 500 });
+    }, 800);
   }, []);
 
   const handleZoomIn = useCallback(() => {
@@ -359,6 +487,9 @@ export default function GraphViewer({
           <div />
         </div>
         <div className="flex flex-col gap-0.5 pointer-events-auto">
+          <button onClick={handleAutoArrange} className="p-1 rounded cursor-pointer" style={btnStyle} title="Auto arrange">
+            <Waypoints size={12} />
+          </button>
           <button onClick={handleToggleLock} className="p-1 rounded cursor-pointer" style={locked ? btnActiveStyle : btnStyle} title={locked ? 'Unlock layout' : 'Lock layout'}>
             {locked ? <Lock size={12} /> : <Unlock size={12} />}
           </button>

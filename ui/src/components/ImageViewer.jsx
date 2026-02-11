@@ -1,5 +1,5 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
-import { ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LocateFixed, Lock, Unlock } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Lock, Maximize2, Minimize2, Unlock, ZoomIn, ZoomOut } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGlobalState } from '../context/GlobalState'
 import { useThemeColors } from '../lib/useThemeColors'
 
@@ -118,6 +118,18 @@ export default function ImageViewer({ imageData, width, height, onToggleFullscre
       ctx.textBaseline = 'top'
       ctx.fillText(node.label, bx + 4, by - fontSize - 2)
     })
+
+    // Dim overlay when a bounding box is selected (spotlight effect)
+    const selectedNode = selectedEntityId ? nodes.find(n => n.id === selectedEntityId && n.bbox) : null
+    if (selectedNode) {
+      const { x: bx, y: by, w: bw, h: bh } = selectedNode.bbox
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+      // Draw overlay with a hole cut out for the selected bbox
+      ctx.beginPath()
+      ctx.rect(0, 0, imgWidth, imgHeight)          // Outer rect (full image)
+      ctx.rect(bx, by + bh, bw, -bh)               // Inner rect (counter-clockwise = hole)
+      ctx.fill('evenodd')
+    }
 
     ctx.restore()
   }, [transform, nodes, hoveredEntityId, selectedEntityId, width, height, imgWidth, imgHeight, colors, loadedImage, imageUrl])
