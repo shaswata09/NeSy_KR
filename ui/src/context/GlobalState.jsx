@@ -13,6 +13,8 @@ function applyTheme(t) {
   }
 }
 
+const PAGE_SIZE = 50
+
 export function StateProvider({ children }) {
   // Theme: 'light' | 'dark'
   const [theme, setTheme] = useState(() => {
@@ -45,6 +47,14 @@ export function StateProvider({ children }) {
   const [dataset, setDataset] = useState([])
   const [datasetLoading, setDatasetLoading] = useState(true)
 
+  // Pagination (only used for type:'api' datasets)
+  const [pageOffset, setPageOffset] = useState(0)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isPaginated, setIsPaginated] = useState(false)
+
+  // Image selection
+  const [selectedImageId, setSelectedImageId] = useState(null)
+
   // Load dataset when activeDatasetId changes
   useEffect(() => {
     let cancelled = false
@@ -52,25 +62,76 @@ export function StateProvider({ children }) {
     if (!entry) {
       setDataset([])
       setDatasetLoading(false)
+      setIsPaginated(false)
       return
     }
+
     setDatasetLoading(true)
-    entry.load().then((data) => {
-      if (cancelled) return
-      setDataset(data)
-      setSelectedImageId(data[0]?.id ?? null)
-      setDatasetLoading(false)
-    })
+
+    if (entry.type === 'api') {
+      setIsPaginated(true)
+      setPageOffset(0)
+      entry.loadPage(0, PAGE_SIZE).then((res) => {
+        if (cancelled) return
+        setDataset(res.items)
+        setTotalItems(res.total)
+        setPageOffset(res.offset)
+        setSelectedImageId(res.items[0]?.id ?? null)
+        setDatasetLoading(false)
+      }).catch((err) => {
+        if (cancelled) return
+        console.error('Failed to load API dataset:', err)
+        setDataset([])
+        setTotalItems(0)
+        setDatasetLoading(false)
+      })
+    } else {
+      setIsPaginated(false)
+      setTotalItems(0)
+      setPageOffset(0)
+      entry.load().then((data) => {
+        if (cancelled) return
+        setDataset(data)
+        setSelectedImageId(data[0]?.id ?? null)
+        setDatasetLoading(false)
+      })
+    }
+
     return () => { cancelled = true }
   }, [activeDatasetId])
+
+  // Load a specific page (API datasets only)
+  const loadPage = useCallback((offset) => {
+    const entry = availableDatasets.find((d) => d.id === activeDatasetId)
+    if (!entry || entry.type !== 'api') return
+
+    setDatasetLoading(true)
+    entry.loadPage(offset, PAGE_SIZE).then((res) => {
+      setDataset(res.items)
+      setTotalItems(res.total)
+      setPageOffset(res.offset)
+      setSelectedImageId(res.items[0]?.id ?? null)
+      setDatasetLoading(false)
+    }).catch((err) => {
+      console.error('Failed to load page:', err)
+      setDatasetLoading(false)
+    })
+  }, [activeDatasetId])
+
+  const nextPage = useCallback(() => {
+    const next = pageOffset + PAGE_SIZE
+    if (next < totalItems) loadPage(next)
+  }, [pageOffset, totalItems, loadPage])
+
+  const prevPage = useCallback(() => {
+    const prev = Math.max(0, pageOffset - PAGE_SIZE)
+    if (pageOffset > 0) loadPage(prev)
+  }, [pageOffset, loadPage])
 
   const switchDataset = useCallback((id) => {
     localStorage.setItem('nesy-dataset', id)
     setActiveDatasetId(id)
   }, [])
-
-  // Image selection
-  const [selectedImageId, setSelectedImageId] = useState(null)
 
   // Entity interaction
   const [selectedEntityId, setSelectedEntityId] = useState(null)
@@ -95,6 +156,14 @@ export function StateProvider({ children }) {
     selectedImageId,
     setSelectedImageId,
     selectedImage,
+
+    // Pagination
+    isPaginated,
+    pageOffset,
+    pageSize: PAGE_SIZE,
+    totalItems,
+    nextPage,
+    prevPage,
 
     // Entity
     selectedEntityId,

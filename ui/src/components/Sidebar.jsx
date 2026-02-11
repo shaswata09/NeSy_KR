@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Image, LayoutGrid, Moon, ScanEye, Sun } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Image, LayoutGrid, Loader2, Moon, ScanEye, Sun } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { cn } from '../lib/cn'
 
@@ -14,6 +14,12 @@ export default function Sidebar({ className, style, onResetLayout }) {
     selectedImage,
     theme,
     toggleTheme,
+    isPaginated,
+    pageOffset,
+    pageSize,
+    totalItems,
+    nextPage,
+    prevPage,
   } = useGlobalState()
 
   return (
@@ -114,13 +120,61 @@ export default function Sidebar({ className, style, onResetLayout }) {
         </div>
       )}
 
+      {/* Pagination header */}
+      {isPaginated && !datasetLoading && (
+        <div
+          className="flex items-center justify-between px-3 py-2 border-b"
+          style={{ borderColor: 'var(--border-primary)' }}
+        >
+          <span
+            className="text-[11px] font-medium"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {(pageOffset + 1).toLocaleString()}–{Math.min(pageOffset + pageSize, totalItems).toLocaleString()} of {totalItems.toLocaleString()}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={prevPage}
+              disabled={pageOffset === 0}
+              className="p-1 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ color: 'var(--text-accent)' }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+              title="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={nextPage}
+              disabled={pageOffset + pageSize >= totalItems}
+              className="p-1 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ color: 'var(--text-accent)' }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+              title="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Image List */}
       <div className="flex-1 overflow-y-auto">
         {datasetLoading && (
           <div
-            className="flex items-center justify-center py-8 text-xs"
+            className="flex flex-col items-center justify-center py-8 gap-2 text-xs"
             style={{ color: 'var(--text-tertiary)' }}
           >
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-accent)' }} />
             Loading dataset…
           </div>
         )}
