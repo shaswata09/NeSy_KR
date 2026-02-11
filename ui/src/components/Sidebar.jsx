@@ -1,8 +1,8 @@
-import { Image, ScanEye, ChevronRight, Sun, Moon } from 'lucide-react'
+import { ChevronRight, Image, LayoutGrid, Moon, ScanEye, Sun } from 'lucide-react'
 import { useGlobalState } from '../context/GlobalState'
 import { cn } from '../lib/cn'
 
-export default function Sidebar({ className, style }) {
+export default function Sidebar({ className, style, onResetLayout }) {
   const {
     dataset,
     selectedImageId,
@@ -32,23 +32,45 @@ export default function Sidebar({ className, style }) {
           </h2>
         </div>
 
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-1.5 rounded-md transition-colors"
-          style={{ color: 'var(--text-tertiary)' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-            e.currentTarget.style.color = 'var(--text-primary)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent'
-            e.currentTarget.style.color = 'var(--text-tertiary)'
-          }}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-md transition-colors cursor-pointer"
+            style={{ color: 'var(--text-tertiary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = 'var(--text-tertiary)'
+            }}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Reset Layout */}
+          {onResetLayout && (
+            <button
+              onClick={onResetLayout}
+              className="p-1.5 rounded-md transition-colors cursor-pointer"
+              style={{ color: 'var(--text-tertiary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+                e.currentTarget.style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = 'var(--text-tertiary)'
+              }}
+              title="Reset panel layout"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Image List */}

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
 
 export default function PaneContainer({ title, children, className, headerLeft, headerRight }) {
@@ -40,7 +40,7 @@ export default function PaneContainer({ title, children, className, headerLeft, 
     <div
       ref={paneRef}
       className={cn(
-        'flex flex-col rounded-lg border overflow-hidden transition-colors duration-200',
+        'flex flex-col h-full rounded-lg border overflow-hidden transition-colors duration-200',
         className
       )}
       style={{
@@ -50,19 +50,19 @@ export default function PaneContainer({ title, children, className, headerLeft, 
     >
       {/* Pane Header */}
       <div
-        className="flex items-center justify-between px-3 py-2 border-b shrink-0"
+        className="flex items-center justify-between px-3 py-2 border-b shrink-0 overflow-hidden"
         style={{ borderColor: 'var(--border-secondary)' }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
           <h3
-            className="text-xs font-semibold uppercase tracking-wider"
+            className="text-xs font-semibold uppercase tracking-wider shrink-0"
             style={{ color: 'var(--text-secondary)' }}
           >
             {title}
           </h3>
           {headerLeft}
         </div>
-        {headerRight && <div className="flex items-center gap-1">{headerRight}</div>}
+        {headerRight && <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">{headerRight}</div>}
       </div>
 
       {/* Content area — passes measured dimensions to children */}
