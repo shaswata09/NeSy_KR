@@ -209,3 +209,6 @@ __marimo__/
 
 # Dataset Paths
 /test/data
+
+# Exceptions
+!ui/src/lib/
