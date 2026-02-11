@@ -208,7 +208,11 @@ __marimo__/
 
 
 # Dataset Paths
-/test/data
+/data
+
+# UI data — ignore generated dataset folders, keep mock_samples
+ui/src/data/*/
+!ui/src/data/mock_samples/
 
 # Exceptions
 !ui/src/lib/

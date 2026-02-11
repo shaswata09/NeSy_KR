@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useState } from 'react'
-import sampleDataset from '../data/sampleData.json'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { availableDatasets, defaultDatasetId } from '../data/index.js'
 
 const GlobalStateContext = createContext(null)
 
@@ -38,9 +38,39 @@ export function StateProvider({ children }) {
     })
   }, [])
 
-  // Dataset browsing
-  const [dataset] = useState(sampleDataset)
-  const [selectedImageId, setSelectedImageId] = useState(sampleDataset[0]?.id ?? null)
+  // Dataset selection
+  const [activeDatasetId, setActiveDatasetId] = useState(
+    () => localStorage.getItem('nesy-dataset') ?? defaultDatasetId,
+  )
+  const [dataset, setDataset] = useState([])
+  const [datasetLoading, setDatasetLoading] = useState(true)
+
+  // Load dataset when activeDatasetId changes
+  useEffect(() => {
+    let cancelled = false
+    const entry = availableDatasets.find((d) => d.id === activeDatasetId)
+    if (!entry) {
+      setDataset([])
+      setDatasetLoading(false)
+      return
+    }
+    setDatasetLoading(true)
+    entry.load().then((data) => {
+      if (cancelled) return
+      setDataset(data)
+      setSelectedImageId(data[0]?.id ?? null)
+      setDatasetLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [activeDatasetId])
+
+  const switchDataset = useCallback((id) => {
+    localStorage.setItem('nesy-dataset', id)
+    setActiveDatasetId(id)
+  }, [])
+
+  // Image selection
+  const [selectedImageId, setSelectedImageId] = useState(null)
 
   // Entity interaction
   const [selectedEntityId, setSelectedEntityId] = useState(null)
@@ -53,6 +83,12 @@ export function StateProvider({ children }) {
     // Theme
     theme,
     toggleTheme,
+
+    // Dataset switching
+    availableDatasets,
+    activeDatasetId,
+    switchDataset,
+    datasetLoading,
 
     // Dataset
     dataset,
@@ -67,7 +103,6 @@ export function StateProvider({ children }) {
     setSelectedEdgeId,
     hoveredEntityId,
     setHoveredEntityId,
-
   }
 
   return (

@@ -77,14 +77,14 @@ export default function PredictionPane() {
       }
     : null;
 
-  if (!selectedImage) {
+  if (!selectedImage || !pred) {
     return (
       <PaneContainer title="Prediction">
         <div
           className="flex items-center justify-center h-full text-sm"
           style={{ color: "var(--text-tertiary)" }}
         >
-          No data selected
+          {selectedImage ? "No prediction available" : "No data selected"}
         </div>
       </PaneContainer>
     );
