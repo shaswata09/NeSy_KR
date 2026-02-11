@@ -193,16 +193,20 @@ export default function GraphViewer({
       }
     }));
 
-    const edges = graphData.links.map((l, i) => ({
-      data: {
-        id: `e-${i}`,
-        source: typeof l.source === 'object' ? l.source.id : l.source,
-        target: typeof l.target === 'object' ? l.target.id : l.target,
-        label: l.label,
-        status: l.status,
-        isDiffView
-      }
-    }));
+    const edges = graphData.links.map((l, i) => {
+      const source = typeof l.source === 'object' ? l.source.id : l.source;
+      const target = typeof l.target === 'object' ? l.target.id : l.target;
+      return {
+        data: {
+          id: `e-${source}-${target}-${l.label || i}`,
+          source,
+          target,
+          label: l.label,
+          status: l.status,
+          isDiffView
+        }
+      };
+    });
 
     return [...nodes, ...edges];
   }, [graphData, isDiffView]);
@@ -363,22 +367,43 @@ export default function GraphViewer({
     };
   }, []);
 
-  // One-time fit on new data load
+  // Handle new data load: Restart simulation and fit once settled
   const hasFittedRef = useRef(false);
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || elements.length === 0) return;
+
+    // Reset fit state for new data
     hasFittedRef.current = false;
-    const fitOnce = () => {
-      if (!hasFittedRef.current) {
-        hasFittedRef.current = true;
-        setTimeout(() => {
-          cy.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 500 });
-        }, 800); // Wait for simulation to spread out
-      }
+    
+    let layout;
+    
+    // Use requestAnimationFrame to ensure cy instance is synchronized with React props
+    // This solves the issue where layout.run() would execution on old/cached elements
+    const rafId = requestAnimationFrame(() => {
+      if (!cy || cy.destroyed()) return;
+      
+      layout = cy.layout(d3Config);
+      layout.run();
+
+      const fitOnce = () => {
+        if (!hasFittedRef.current) {
+          hasFittedRef.current = true;
+          setTimeout(() => {
+            if (!cy.destroyed()) {
+              cy.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 500 });
+            }
+          }, 1000); // Slightly more time for d3 physics to push nodes out
+        }
+      };
+      fitOnce();
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (layout) layout.stop();
     };
-    fitOnce();
-  }, [elements]);
+  }, [elements, d3Config]);
 
   // Handle selected entity highlight from external changes (e.g. image bounding box)
   useEffect(() => {
