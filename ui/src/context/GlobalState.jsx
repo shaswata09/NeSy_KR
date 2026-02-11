@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
-import { sampleDataset } from '../data/sampleData'
+import sampleDataset from '../data/sampleData.json'
 
 const GlobalStateContext = createContext(null)
 

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "unique_entry_id",
+    "name": "Human-readable name",
+    "imageUrl": "https://example.com/image.jpg",
+    "width": 800,
+    "height": 600,
+    "metadata": {
+      "source": "Dataset name",
+      "split": "train",
+      "customField": "any additional key-value pairs"
+    },
+
+    "groundTruth": {
+      "nodes": [
+        {
+          "id": "node_1",
+          "label": "Object Name",
+          "bbox": { "x": 100, "y": 50, "w": 200, "h": 150 }
+        },
+        {
+          "id": "node_2",
+          "label": "Another Object",
+          "bbox": { "x": 350, "y": 200, "w": 120, "h": 80 }
+        }
+      ],
+
+      "links": [
+        {
+          "source": "node_1",
+          "target": "node_2",
+          "label": "relationship label"
+        }
+      ],
+
+      "attributes": [
+        {
+          "entityId": "node_1",
+          "attribute": "color",
+          "value": "red"
+        },
+        {
+          "entityId": "node_2",
+          "attribute": "material",
+          "value": "wood"
+        }
+      ],
+
+      "qas": [
+        {
+          "id": "qa_1",
+          "question": "What color is the object?",
+          "answer": "Red."
+        }
+      ]
+    },
+
+    "prediction": {
+      "nodes": [
+        {
+          "id": "node_1",
+          "label": "Object Name",
+          "status": "correct"
+        },
+        {
+          "id": "node_2",
+          "label": "Another Object",
+          "status": "missing"
+        },
+        {
+          "id": "h_node_3",
+          "label": "Phantom Object",
+          "status": "hallucinated"
+        }
+      ],
+
+      "links": [
+        {
+          "source": "node_1",
+          "target": "h_node_3",
+          "label": "on",
+          "status": "hallucinated"
+        }
+      ],
+
+      "attributes": [
+        {
+          "entityId": "node_1",
+          "attribute": "color",
+          "value": "red",
+          "status": "correct"
+        },
+        {
+          "entityId": "node_2",
+          "attribute": "material",
+          "value": "wood",
+          "status": "missing"
+        },
+        {
+          "entityId": "h_node_3",
+          "attribute": "size",
+          "value": "large",
+          "status": "hallucinated"
+        }
+      ],
+
+      "qas": [
+        {
+          "id": "qa_1",
+          "question": "What color is the object?",
+          "answer": "Red.",
+          "status": "correct"
+        },
+        {
+          "id": "qa_2",
+          "question": "Where is the object?",
+          "answer": null,
+          "status": "missing"
+        }
+      ]
+    }
+  }
+]

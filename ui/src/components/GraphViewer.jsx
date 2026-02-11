@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { useGlobalState } from '../context/GlobalState'
 import { useThemeColors } from '../lib/useThemeColors'
-import { DIFF_STATUS } from '../data/sampleData'
+import { DIFF_STATUS } from '../lib/diffStatus'
 
 export default function GraphViewer({
   graphData,

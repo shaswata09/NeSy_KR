@@ -1,16 +1,52 @@
-# React + Vite
+# Augmenter UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite application for visualizing and comparing ground truth vs. model predictions across scene graphs, images, attributes, and question-answers.
 
-Currently, two official plugins are available:
+## Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev      # development server at http://localhost:5173
+npm run build    # production build
+npm run preview  # preview production build
+```
 
-## React Compiler
+## Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+src/
+  components/
+    ComparisonWorkspace.jsx   CSS Grid layout (sidebar + 3 panes)
+    Sidebar.jsx               Dataset list, theme toggle
+    PaneContainer.jsx         Reusable pane wrapper with ResizeObserver
+    InputPane.jsx             Input source viewer (ground truth data)
+    GroundTruthPane.jsx       Ground truth viewer
+    PredictionPane.jsx        Prediction viewer with diff overlay
+    ImageViewer.jsx           Canvas-based image + bounding box renderer
+    GraphViewer.jsx           Force-directed graph (react-force-graph-2d)
+    AttributesViewer.jsx      Scrollable entity attribute table
+    QAViewer.jsx              Question-answer card list
+    ViewModeToggle.jsx        Per-pane dropdown for switching view modes
+  context/
+    GlobalState.jsx           React Context for shared state
+  data/
+    sampleData.js             Sample Visual Genome data (images 1, 2, 3)
+  lib/
+    cn.js                     clsx + tailwind-merge utility
+    getAvailableModes.js      Computes available view modes from data
+    useThemeColors.js         Resolves CSS vars for canvas rendering
+```
 
-## Expanding the ESLint configuration
+## Dataset Format
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+See [`../dataset-template.json`](../dataset-template.json) and the [project README](../README.md) for the full dataset schema specification.
+
+To use your own data, replace or extend `src/data/sampleData.js` following the template format.
+
+## Tech Stack
+
+- React 19 + Vite 7
+- Tailwind CSS v4
+- react-force-graph-2d + d3-force
+- lucide-react (icons)
+- CSS custom properties for light/dark theming

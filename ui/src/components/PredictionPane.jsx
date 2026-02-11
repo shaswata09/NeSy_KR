@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGlobalState } from "../context/GlobalState";
-import { DIFF_STATUS } from "../data/sampleData";
+import { DIFF_STATUS } from "../lib/diffStatus";
 import { getAvailableModes } from "../lib/getAvailableModes";
 import AttributesViewer from "./AttributesViewer";
 import QAViewer from "./QAViewer";
