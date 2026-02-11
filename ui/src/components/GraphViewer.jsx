@@ -26,6 +26,8 @@ export default function GraphViewer({
   } = useGlobalState();
   const colors = useThemeColors();
   const [locked, setLocked] = useState(false);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, title: '', attributes: [] });
+
 
 
 
@@ -313,9 +315,39 @@ export default function GraphViewer({
       edge.target().removeClass('hovered-adj');
     };
 
+    const handleCxtTap = (evt) => {
+      const target = evt.target;
+      if (target === cy) {
+        setContextMenu({ visible: false });
+        return;
+      }
+
+      const id = target.id();
+      const label = target.data('label') || id;
+      const type = target.isNode() ? 'Node' : 'Edge';
+      
+      // Filter attributes for this entity
+      const entityAttrs = (graphData.attributes || []).filter(a => a.entityId === id);
+
+      if (entityAttrs.length > 0) {
+        const pos = evt.renderedPosition;
+        setContextMenu({
+          visible: true,
+          x: pos.x,
+          y: pos.y,
+          title: `${type}: ${label}`,
+          attributes: entityAttrs
+        });
+      }
+    };
+
     cy.on('tap', 'edge', handleEdgeTap);
     cy.on('mouseover', 'edge', handleEdgeMouseOver);
     cy.on('mouseout', 'edge', handleEdgeMouseOut);
+    cy.on('cxttap', handleCxtTap);
+    cy.on('tapstart', () => setContextMenu({ visible: false }));
+    cy.on('dragstart', () => setContextMenu({ visible: false }));
+    cy.on('zoom pan', () => setContextMenu({ visible: false }));
 
     return () => {
       cy.off('tap', 'node', handleSelect);
@@ -327,6 +359,7 @@ export default function GraphViewer({
       cy.off('tap', 'edge', handleEdgeTap);
       cy.off('mouseover', 'edge', handleEdgeMouseOver);
       cy.off('mouseout', 'edge', handleEdgeMouseOut);
+      cy.off('cxttap', handleCxtTap);
     };
   }, []);
 
@@ -502,6 +535,44 @@ export default function GraphViewer({
           )}
         </div>
       </div>
+
+      {/* Context Menu Popup */}
+      {contextMenu.visible && (
+        <div 
+          className="absolute z-[100] shadow-xl border rounded-md overflow-hidden min-w-[180px]"
+          style={{ 
+            left: contextMenu.x + 10, 
+            top: contextMenu.y + 10,
+            backgroundColor: 'var(--bg-elevated)',
+            borderColor: 'var(--border-secondary)',
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div className="px-3 py-2 border-b bg-black/5" style={{ borderColor: 'var(--border-secondary)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+              {contextMenu.title}
+            </p>
+          </div>
+          <div className="max-h-[200px] overflow-y-auto">
+            <table className="w-full text-left text-[11px] border-collapse">
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--border-secondary)' }}>
+                  <th className="px-3 py-1.5 font-semibold" style={{ color: 'var(--text-tertiary)' }}>Attribute</th>
+                  <th className="px-3 py-1.5 font-semibold text-right" style={{ color: 'var(--text-tertiary)' }}>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contextMenu.attributes.map((attr, i) => (
+                  <tr key={i} className="border-b last:border-0" style={{ borderColor: 'var(--border-secondary)' }}>
+                    <td className="px-3 py-1.5" style={{ color: 'var(--text-secondary)' }}>{attr.attribute}</td>
+                    <td className="px-3 py-1.5 text-right font-mono" style={{ color: 'var(--text-primary)' }}>{attr.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

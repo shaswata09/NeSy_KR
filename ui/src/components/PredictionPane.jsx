@@ -100,10 +100,12 @@ export default function PredictionPane() {
     >
       {({ width, height, toggleFullscreen, isFullscreen }) => (
         <div className="relative" style={{ width, height }}>
-          {/* Diff legend overlay */}
-          <div className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none z-10">
-            <DiffLegend />
-          </div>
+          {/* Diff legend overlay - only for GRAPH mode */}
+          {activeMode === "GRAPH" && (
+            <div className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none">
+              <DiffLegend />
+            </div>
+          )}
           {activeMode === "IMAGE" ? (
             <ImageViewer
               imageData={{
