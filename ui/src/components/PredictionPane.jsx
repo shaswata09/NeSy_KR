@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useGlobalState } from "../context/GlobalState";
 import { DIFF_STATUS } from "../data/sampleData";
 import { getAvailableModes } from "../lib/getAvailableModes";
 import AttributesViewer from "./AttributesViewer";
+import QAViewer from "./QAViewer";
 import GraphViewer from "./GraphViewer";
 import ImageViewer from "./ImageViewer";
 import PaneContainer from "./PaneContainer";
@@ -56,36 +57,25 @@ export default function PredictionPane() {
   const [viewMode, setViewMode] = useState("GRAPH");
 
   const pred = selectedImage?.prediction;
-  const modes = useMemo(
-    () =>
-      pred
-        ? getAvailableModes({
-            // Prediction IMAGE mode only if prediction nodes have bboxes
-            imageUrl: selectedImage.imageUrl,
-            nodes: pred.nodes,
-            attributes: pred.attributes,
-          })
-        : [],
-    [pred, selectedImage?.imageUrl],
-  );
+  const modes = pred
+    ? getAvailableModes({
+        imageUrl: selectedImage.imageUrl,
+        nodes: pred.nodes,
+        attributes: pred.attributes,
+        qas: pred.qas,
+      })
+    : [];
 
-  // Auto-correct if current mode is no longer available
-  useEffect(() => {
-    if (modes.length > 0 && !modes.includes(viewMode)) {
-      setViewMode(modes[0]);
-    }
-  }, [modes, viewMode]);
+  // Auto-correct: if current mode is unavailable, fall back to first available
+  const activeMode = modes.includes(viewMode) ? viewMode : (modes[0] ?? viewMode);
 
-  const stats = useMemo(() => {
-    if (!pred) return null;
-    const nodes = pred.nodes;
-    return {
-      correct: nodes.filter((n) => n.status === DIFF_STATUS.CORRECT).length,
-      missing: nodes.filter((n) => n.status === DIFF_STATUS.MISSING).length,
-      hallucinated: nodes.filter((n) => n.status === DIFF_STATUS.HALLUCINATED)
-        .length,
-    };
-  }, [pred]);
+  const stats = pred
+    ? {
+        correct: pred.nodes.filter((n) => n.status === DIFF_STATUS.CORRECT).length,
+        missing: pred.nodes.filter((n) => n.status === DIFF_STATUS.MISSING).length,
+        hallucinated: pred.nodes.filter((n) => n.status === DIFF_STATUS.HALLUCINATED).length,
+      }
+    : null;
 
   if (!selectedImage) {
     return (
@@ -104,13 +94,13 @@ export default function PredictionPane() {
     <PaneContainer
       title="Prediction"
       headerLeft={
-        <ViewModeToggle modes={modes} value={viewMode} onChange={setViewMode} />
+        <ViewModeToggle modes={modes} value={activeMode} onChange={setViewMode} />
       }
       headerRight={<DiffLegend />}
     >
       {({ width, height }) => (
         <div className="relative" style={{ width, height }}>
-          {viewMode === "IMAGE" ? (
+          {activeMode === "IMAGE" ? (
             <ImageViewer
               imageData={{
                 ...pred,
@@ -121,7 +111,7 @@ export default function PredictionPane() {
               width={width}
               height={height}
             />
-          ) : viewMode === "GRAPH" ? (
+          ) : activeMode === "GRAPH" ? (
             <GraphViewer
               graphData={pred}
               isDiffView={true}
@@ -129,12 +119,14 @@ export default function PredictionPane() {
               width={width}
               height={height}
             />
-          ) : (
+          ) : activeMode === "ATTRIBUTES" ? (
             <AttributesViewer
               attributes={pred.attributes}
               nodes={pred.nodes}
               isDiffView={true}
             />
+          ) : (
+            <QAViewer qas={pred.qas} isDiffView={true} />
           )}
 
           {/* Stats overlay */}

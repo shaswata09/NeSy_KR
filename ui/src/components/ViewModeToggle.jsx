@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Eye, GitGraph, TableProperties, ChevronDown } from 'lucide-react'
+import { Eye, GitGraph, TableProperties, MessageCircleQuestion, ChevronDown } from 'lucide-react'
 
 const MODE_META = {
-  IMAGE:      { icon: Eye,             label: 'Image' },
-  GRAPH:      { icon: GitGraph,        label: 'Graph' },
-  ATTRIBUTES: { icon: TableProperties, label: 'Attributes' },
+  IMAGE:      { icon: Eye,                    label: 'Image' },
+  GRAPH:      { icon: GitGraph,               label: 'Graph' },
+  ATTRIBUTES: { icon: TableProperties,        label: 'Attributes' },
+  QA:         { icon: MessageCircleQuestion,   label: 'Q&A' },
 }
 
 export default function ViewModeToggle({ modes, value, onChange }) {
