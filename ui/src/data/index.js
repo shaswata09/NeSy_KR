@@ -44,7 +44,9 @@ const staticDatasets = Object.entries(modules).map(([path, loader]) => ({
 // ---------------------------------------------------------------------------
 // API datasets (manual registration)
 // ---------------------------------------------------------------------------
-const VG_API_BASE = 'http://localhost:8100'
+const VG_API_PORT = 8100
+// Use the browser's current hostname so the UI works both locally and over LAN
+const VG_API_BASE = `http://${window.location.hostname}:${VG_API_PORT}`
 
 const apiDatasets = [
   {

@@ -10,8 +10,9 @@ Endpoints:
   GET /api/vg/health             ->  { status: "ok", total: N }
 
 Usage:
-  python vg_server.py                  # default port 8100
+  python vg_server.py                  # binds 0.0.0.0:8100 (all interfaces)
   python vg_server.py --port 9000      # custom port
+  python vg_server.py --host 127.0.0.1 # localhost only
 """
 
 import argparse
@@ -244,20 +245,38 @@ class VGHandler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def _get_local_ip():
+    """Best-effort detection of the machine's LAN IP."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Visual Genome paginated API server")
+    parser.add_argument("--host", default="0.0.0.0", help="Bind address (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8100, help="Port (default: 8100)")
     args = parser.parse_args()
 
     print("Loading Visual Genome subsets...")
     load_all()
-    print(f"\nReady. {len(common_ids):,} images available.")
-    print(f"Serving on http://localhost:{args.port}\n")
-    print("Endpoints:")
-    print(f"  GET http://localhost:{args.port}/api/vg?offset=0&limit=50")
-    print(f"  GET http://localhost:{args.port}/api/vg/health\n")
 
-    server = HTTPServer(("", args.port), VGHandler)
+    lan_ip = _get_local_ip()
+    print(f"\nReady. {len(common_ids):,} images available.")
+    print(f"Serving on:")
+    print(f"  Local:   http://localhost:{args.port}")
+    print(f"  Network: http://{lan_ip}:{args.port}\n")
+    print("Endpoints:")
+    print(f"  GET /api/vg?offset=0&limit=50")
+    print(f"  GET /api/vg/health\n")
+
+    server = HTTPServer((args.host, args.port), VGHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
