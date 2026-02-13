@@ -4,7 +4,13 @@ from pathlib import Path
 from typing import Any
 
 from api.adapter_base import DatasetAdapter
-from api.shared import MAX_NODES, MAX_LINKS, MAX_ATTRIBUTES, MAX_QAS, categorize_attribute
+from api.shared import (
+    MAX_ATTRIBUTES,
+    MAX_LINKS,
+    MAX_NODES,
+    MAX_QAS,
+    categorize_attribute,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = str(PROJECT_ROOT / "data" / "visual_genome" / "hf_cache")
@@ -63,8 +69,11 @@ class VGAdapter(DatasetAdapter):
         for ds_name, config in CONFIGS.items():
             print(f"  [VG] Loading {ds_name}...")
             ds = load_dataset(
-                "visual_genome", config, split="train",
-                cache_dir=CACHE_DIR, trust_remote_code=True,
+                "visual_genome",
+                config,
+                split="train",
+                cache_dir=CACHE_DIR,
+                trust_remote_code=True,
             )
             ds = ds.remove_columns("image")
             self._subsets[ds_name] = ds
@@ -84,14 +93,27 @@ class VGAdapter(DatasetAdapter):
     def get_image_ids(self) -> list:
         return self._common_ids or []
 
+    def get_image_ids_for_split(self, split: str = "all") -> list:
+        if split in ["all", "train"]:
+            return self.get_image_ids()
+        return []
+
     def cast(self, index: int, server_base_url: str) -> dict[str, Any]:
         image_id = self._common_ids[index]
+        return self.cast_item(image_id, server_base_url)
 
+    def cast_item(self, image_id: int, server_base_url: str) -> dict[str, Any]:
         obj_row = self._subsets["objects"][self._id_maps["objects"][image_id]]
-        rel_row = self._subsets["relationships"][self._id_maps["relationships"][image_id]]
+        rel_row = self._subsets["relationships"][
+            self._id_maps["relationships"][image_id]
+        ]
         attr_row = self._subsets["attributes"][self._id_maps["attributes"][image_id]]
-        qa_row = self._subsets["question_answers"][self._id_maps["question_answers"][image_id]]
-        reg_row = self._subsets["region_descriptions"][self._id_maps["region_descriptions"][image_id]]
+        qa_row = self._subsets["question_answers"][
+            self._id_maps["question_answers"][image_id]
+        ]
+        reg_row = self._subsets["region_descriptions"][
+            self._id_maps["region_descriptions"][image_id]
+        ]
 
         # Nodes
         nodes = []
@@ -99,11 +121,18 @@ class VGAdapter(DatasetAdapter):
         for obj in obj_row["objects"][:MAX_NODES]:
             oid = str(obj["object_id"])
             label = obj["names"][0].capitalize() if obj["names"] else f"Object {oid}"
-            nodes.append({
-                "id": oid,
-                "label": label,
-                "bbox": {"x": obj["x"], "y": obj["y"], "w": obj["w"], "h": obj["h"]},
-            })
+            nodes.append(
+                {
+                    "id": oid,
+                    "label": label,
+                    "bbox": {
+                        "x": obj["x"],
+                        "y": obj["y"],
+                        "w": obj["w"],
+                        "h": obj["h"],
+                    },
+                }
+            )
             node_ids.add(oid)
 
         # Links
@@ -120,21 +149,25 @@ class VGAdapter(DatasetAdapter):
             eid = str(attr["object_id"])
             if eid not in node_ids:
                 continue
-            for a in (attr.get("attributes") or []):
-                attributes.append({
-                    "entityId": eid,
-                    "attribute": categorize_attribute(a),
-                    "value": a,
-                })
+            for a in attr.get("attributes") or []:
+                attributes.append(
+                    {
+                        "entityId": eid,
+                        "attribute": categorize_attribute(a),
+                        "value": a,
+                    }
+                )
 
         # QA pairs
         qas = []
         for qa in qa_row["qas"][:MAX_QAS]:
-            qas.append({
-                "id": f"qa_{qa['qa_id']}",
-                "question": qa["question"],
-                "answer": qa["answer"],
-            })
+            qas.append(
+                {
+                    "id": f"qa_{qa['qa_id']}",
+                    "question": qa["question"],
+                    "answer": qa["answer"],
+                }
+            )
 
         return {
             "id": f"vg_{image_id}",

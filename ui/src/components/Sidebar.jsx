@@ -1,6 +1,16 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Image, LayoutGrid, Loader2, Moon, ScanEye, Sun } from 'lucide-react'
-import { useGlobalState } from '../context/GlobalState'
-import { cn } from '../lib/cn'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Image,
+  LayoutGrid,
+  Loader2,
+  Moon,
+  ScanEye,
+  Sun,
+} from "lucide-react";
+import { useGlobalState } from "../context/GlobalState";
+import { cn } from "../lib/cn";
 
 export default function Sidebar({ className, style, onResetLayout }) {
   const {
@@ -8,6 +18,8 @@ export default function Sidebar({ className, style, onResetLayout }) {
     datasetLoading,
     availableDatasets,
     activeDatasetId,
+    activeSplit,
+    setActiveSplit,
     switchDataset,
     refreshApiDatasets,
     selectedImageId,
@@ -21,23 +33,26 @@ export default function Sidebar({ className, style, onResetLayout }) {
     totalItems,
     nextPage,
     prevPage,
-  } = useGlobalState()
+  } = useGlobalState();
 
   return (
     <aside
-      className={cn('flex flex-col transition-colors duration-200', className)}
-      style={{ backgroundColor: 'var(--bg-sidebar)', ...style }}
+      className={cn("flex flex-col transition-colors duration-200", className)}
+      style={{ backgroundColor: "var(--bg-sidebar)", ...style }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: 'var(--border-primary)' }}
+        style={{ borderColor: "var(--border-primary)" }}
       >
         <div className="flex items-center gap-2">
-          <ScanEye className="w-4 h-4" style={{ color: 'var(--text-accent)' }} />
+          <ScanEye
+            className="w-4 h-4"
+            style={{ color: "var(--text-accent)" }}
+          />
           <h2
             className="text-sm font-semibold tracking-wide uppercase"
-            style={{ color: 'var(--text-secondary)' }}
+            style={{ color: "var(--text-secondary)" }}
           >
             Augmenter
           </h2>
@@ -48,18 +63,22 @@ export default function Sidebar({ className, style, onResetLayout }) {
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-md transition-colors cursor-pointer"
-            style={{ color: 'var(--text-tertiary)' }}
+            style={{ color: "var(--text-tertiary)" }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-              e.currentTarget.style.color = 'var(--text-primary)'
+              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+              e.currentTarget.style.color = "var(--text-primary)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = 'var(--text-tertiary)'
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "var(--text-tertiary)";
             }}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
           </button>
 
           {/* Reset Layout */}
@@ -67,14 +86,14 @@ export default function Sidebar({ className, style, onResetLayout }) {
             <button
               onClick={onResetLayout}
               className="p-1.5 rounded-md transition-colors cursor-pointer"
-              style={{ color: 'var(--text-tertiary)' }}
+              style={{ color: "var(--text-tertiary)" }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-                e.currentTarget.style.color = 'var(--text-primary)'
+                e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text-primary)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = 'var(--text-tertiary)'
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "var(--text-tertiary)";
               }}
               title="Reset panel layout"
             >
@@ -87,24 +106,24 @@ export default function Sidebar({ className, style, onResetLayout }) {
       {/* Dataset Selector — always visible; re-fetches API datasets on focus */}
       <div
         className="px-3 py-2 border-b"
-        style={{ borderColor: 'var(--border-primary)' }}
+        style={{ borderColor: "var(--border-primary)" }}
       >
         <label
           className="block text-[10px] font-semibold uppercase mb-1 tracking-wide"
-          style={{ color: 'var(--text-tertiary)' }}
+          style={{ color: "var(--text-tertiary)" }}
         >
           Dataset
         </label>
-        <div className="relative">
+        <div className="relative mb-2">
           <select
             value={activeDatasetId}
             onChange={(e) => switchDataset(e.target.value)}
             onFocus={refreshApiDatasets}
             className="w-full appearance-none text-xs font-medium rounded-md px-2.5 py-1.5 pr-7 cursor-pointer outline-none transition-colors"
             style={{
-              backgroundColor: 'var(--bg-elevated)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-primary)',
+              backgroundColor: "var(--bg-elevated)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-primary)",
             }}
           >
             {availableDatasets.map((ds) => (
@@ -115,34 +134,77 @@ export default function Sidebar({ className, style, onResetLayout }) {
           </select>
           <ChevronDown
             className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
-            style={{ color: 'var(--text-tertiary)' }}
+            style={{ color: "var(--text-tertiary)" }}
           />
         </div>
+
+        {/* Split Selector - only shown if dataset has > 1 split or it's an API dataset with splits info */}
+        {(() => {
+          const entry = availableDatasets.find((d) => d.id === activeDatasetId);
+          if (!entry || !entry.splits || entry.splits.length <= 1) return null;
+
+          return (
+            <>
+              <label
+                className="block text-[10px] font-semibold uppercase mb-1 tracking-wide"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                Split
+              </label>
+              <div className="relative">
+                <select
+                  value={activeSplit}
+                  onChange={(e) => setActiveSplit(e.target.value)}
+                  className="w-full appearance-none text-xs font-medium rounded-md px-2.5 py-1.5 pr-7 cursor-pointer outline-none transition-colors"
+                  style={{
+                    backgroundColor: "var(--bg-elevated)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-primary)",
+                  }}
+                >
+                  <option value="all">All Splits</option>
+                  {entry.splits.map((s) => (
+                    <option key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Pagination header */}
       {isPaginated && !datasetLoading && (
         <div
           className="flex items-center justify-between px-3 py-2 border-b"
-          style={{ borderColor: 'var(--border-primary)' }}
+          style={{ borderColor: "var(--border-primary)" }}
         >
           <span
             className="text-[11px] font-medium"
-            style={{ color: 'var(--text-secondary)' }}
+            style={{ color: "var(--text-secondary)" }}
           >
-            {(pageOffset + 1).toLocaleString()}–{Math.min(pageOffset + pageSize, totalItems).toLocaleString()} of {totalItems.toLocaleString()}
+            {(pageOffset + 1).toLocaleString()}–
+            {Math.min(pageOffset + pageSize, totalItems).toLocaleString()} of{" "}
+            {totalItems.toLocaleString()}
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={prevPage}
               disabled={pageOffset === 0}
               className="p-1 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              style={{ color: 'var(--text-accent)' }}
+              style={{ color: "var(--text-accent)" }}
               onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+                if (!e.currentTarget.disabled)
+                  e.currentTarget.style.backgroundColor = "var(--bg-hover)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.backgroundColor = "transparent";
               }}
               title="Previous page"
             >
@@ -152,12 +214,13 @@ export default function Sidebar({ className, style, onResetLayout }) {
               onClick={nextPage}
               disabled={pageOffset + pageSize >= totalItems}
               className="p-1 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              style={{ color: 'var(--text-accent)' }}
+              style={{ color: "var(--text-accent)" }}
               onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
+                if (!e.currentTarget.disabled)
+                  e.currentTarget.style.backgroundColor = "var(--bg-hover)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.backgroundColor = "transparent";
               }}
               title="Next page"
             >
@@ -172,41 +235,50 @@ export default function Sidebar({ className, style, onResetLayout }) {
         {datasetLoading && (
           <div
             className="flex flex-col items-center justify-center py-8 gap-2 text-xs"
-            style={{ color: 'var(--text-tertiary)' }}
+            style={{ color: "var(--text-tertiary)" }}
           >
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-accent)' }} />
+            <Loader2
+              className="w-5 h-5 animate-spin"
+              style={{ color: "var(--text-accent)" }}
+            />
             Loading dataset…
           </div>
         )}
         {dataset.map((item) => {
-          const isSelected = selectedImageId === item.id
+          const isSelected = selectedImageId === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setSelectedImageId(item.id)}
               className="w-full flex items-center gap-3 px-3 py-3 text-left transition-colors border-l-2"
               style={{
-                backgroundColor: isSelected ? 'var(--bg-active)' : 'transparent',
-                borderLeftColor: isSelected ? 'var(--accent-blue)' : 'transparent',
-                color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                backgroundColor: isSelected
+                  ? "var(--bg-active)"
+                  : "transparent",
+                borderLeftColor: isSelected
+                  ? "var(--accent-blue)"
+                  : "transparent",
+                color: isSelected
+                  ? "var(--text-primary)"
+                  : "var(--text-secondary)",
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)'
-                  e.currentTarget.style.color = 'var(--text-primary)'
+                  e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text-primary)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = "var(--text-secondary)";
                 }
               }}
             >
               {/* Thumbnail */}
               <div
                 className="w-12 h-12 rounded overflow-hidden flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'var(--bg-elevated)' }}
+                style={{ backgroundColor: "var(--bg-elevated)" }}
               >
                 {item.imageUrl ? (
                   <img
@@ -216,23 +288,33 @@ export default function Sidebar({ className, style, onResetLayout }) {
                     loading="lazy"
                   />
                 ) : (
-                  <Image className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+                  <Image
+                    className="w-5 h-5"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.name}</p>
-                <p className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
+                <p
+                  className="text-xs truncate"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {item.id}
                 </p>
               </div>
 
               <ChevronRight
                 className="w-4 h-4 shrink-0 transition-colors"
-                style={{ color: isSelected ? 'var(--text-accent)' : 'var(--text-tertiary)' }}
+                style={{
+                  color: isSelected
+                    ? "var(--text-accent)"
+                    : "var(--text-tertiary)",
+                }}
               />
             </button>
-          )
+          );
         })}
       </div>
 
@@ -240,26 +322,32 @@ export default function Sidebar({ className, style, onResetLayout }) {
       {selectedImage && (
         <div
           className="border-t px-4 py-3"
-          style={{ borderColor: 'var(--border-primary)' }}
+          style={{ borderColor: "var(--border-primary)" }}
         >
           <h3
             className="text-xs font-semibold uppercase mb-2"
-            style={{ color: 'var(--text-tertiary)' }}
+            style={{ color: "var(--text-tertiary)" }}
           >
             Metadata
           </h3>
           <dl className="space-y-1 text-xs">
             {Object.entries(selectedImage.metadata).map(([key, value]) => (
               <div key={key} className="flex justify-between">
-                <dt style={{ color: 'var(--text-tertiary)' }}>{key}</dt>
-                <dd className="font-mono" style={{ color: 'var(--text-secondary)' }}>
+                <dt style={{ color: "var(--text-tertiary)" }}>{key}</dt>
+                <dd
+                  className="font-mono"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {String(value)}
                 </dd>
               </div>
             ))}
             <div className="flex justify-between">
-              <dt style={{ color: 'var(--text-tertiary)' }}>dimensions</dt>
-              <dd className="font-mono" style={{ color: 'var(--text-secondary)' }}>
+              <dt style={{ color: "var(--text-tertiary)" }}>dimensions</dt>
+              <dd
+                className="font-mono"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 {selectedImage.width}x{selectedImage.height}
               </dd>
             </div>
@@ -267,5 +355,5 @@ export default function Sidebar({ className, style, onResetLayout }) {
         </div>
       )}
     </aside>
-  )
+  );
 }

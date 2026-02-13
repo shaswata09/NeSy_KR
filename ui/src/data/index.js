@@ -15,38 +15,37 @@
 // ---------------------------------------------------------------------------
 // Static datasets (build-time glob)
 // ---------------------------------------------------------------------------
-const modules = import.meta.glob(
-  ['./**/*.json', '!./**/package.json'],
-  { eager: false },
-)
+const modules = import.meta.glob(["./**/*.json", "!./**/package.json"], {
+  eager: false,
+});
 
 function labelFromPath(path) {
   const clean = path
-    .replace(/^\.\//, '')
-    .replace(/\.json$/, '')
-    .replace(/Data$/i, '')
-  const segment = clean.includes('/') ? clean.split('/').pop() : clean
+    .replace(/^\.\//, "")
+    .replace(/\.json$/, "")
+    .replace(/Data$/i, "");
+  const segment = clean.includes("/") ? clean.split("/").pop() : clean;
   return segment
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export const staticDatasets = Object.entries(modules).map(([path, loader]) => ({
   id: path,
   label: labelFromPath(path),
-  type: 'static',
+  type: "static",
   load: async () => {
-    const mod = await loader()
-    return mod.default
+    const mod = await loader();
+    return mod.default;
   },
-}))
+}));
 
 // ---------------------------------------------------------------------------
 // API datasets (fetched dynamically from unified server)
 // ---------------------------------------------------------------------------
 // Use the browser's current hostname so the UI works both locally and over LAN.
-export const API_BASE = `http://${window.location.hostname}:8200`
+export const API_BASE = `http://${window.location.hostname}:8200`;
 
 /**
  * Fetch available datasets from the unified API server and return
@@ -55,28 +54,28 @@ export const API_BASE = `http://${window.location.hostname}:8200`
  */
 export async function fetchApiDatasets() {
   try {
-    const res = await fetch(`${API_BASE}/api/datasets`)
-    if (!res.ok) return []
-    const datasets = await res.json()
+    const res = await fetch(`${API_BASE}/api/datasets`);
+    if (!res.ok) return [];
+    const datasets = await res.json();
     return datasets.map((ds) => ({
       id: `api:${ds.name}`,
       label: ds.displayName,
-      type: 'api',
+      type: "api",
       total: ds.total,
       splits: ds.splits,
       hasLocalImages: ds.hasLocalImages,
-      async loadPage(offset = 0, limit = 50) {
+      async loadPage(offset = 0, limit = 50, split = "all") {
         const r = await fetch(
-          `${API_BASE}/api/datasets/${ds.name}?offset=${offset}&limit=${limit}`,
-        )
-        if (!r.ok) throw new Error(`${ds.displayName} API error: ${r.status}`)
-        return r.json() // { total, offset, limit, items }
+          `${API_BASE}/api/datasets/${ds.name}?offset=${offset}&limit=${limit}&split=${split}`,
+        );
+        if (!r.ok) throw new Error(`${ds.displayName} API error: ${r.status}`);
+        return r.json(); // { total, offset, limit, items }
       },
-    }))
+    }));
   } catch {
-    console.warn('Unified API server not reachable — no API datasets loaded.')
-    return []
+    console.warn("Unified API server not reachable — no API datasets loaded.");
+    return [];
   }
 }
 
-export const defaultStaticDatasetId = staticDatasets[0]?.id ?? null
+export const defaultStaticDatasetId = staticDatasets[0]?.id ?? null;

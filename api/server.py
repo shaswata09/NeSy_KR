@@ -22,11 +22,11 @@ import argparse
 import mimetypes
 import time
 
-from flask import Flask, jsonify, request, send_file, abort
+from flask import Flask, abort, jsonify, request, send_file
 from flask_cors import CORS
 
-from api.shared import MAX_LIMIT
 from api.adapters import ADAPTER_REGISTRY
+from api.shared import MAX_LIMIT
 
 
 def create_app(adapters_to_load=None, split="all"):
@@ -67,22 +67,26 @@ def create_app(adapters_to_load=None, split="all"):
                 "total": adapter.total,
                 "status": "ok" if adapter.total > 0 else "empty",
             }
-        return jsonify({
-            "status": "ok",
-            "datasets": datasets_status,
-        })
+        return jsonify(
+            {
+                "status": "ok",
+                "datasets": datasets_status,
+            }
+        )
 
     @app.route("/api/datasets")
     def list_datasets():
         result = []
         for name, adapter in loaded_adapters.items():
-            result.append({
-                "name": name,
-                "displayName": adapter.display_name,
-                "total": adapter.total,
-                "splits": adapter.splits,
-                "hasLocalImages": adapter.has_local_images,
-            })
+            result.append(
+                {
+                    "name": name,
+                    "displayName": adapter.display_name,
+                    "total": adapter.total,
+                    "splits": adapter.splits,
+                    "hasLocalImages": adapter.has_local_images,
+                }
+            )
         return jsonify(result)
 
     @app.route("/api/datasets/<name>")
@@ -93,26 +97,36 @@ def create_app(adapters_to_load=None, split="all"):
 
         offset = max(0, request.args.get("offset", 0, type=int))
         limit = min(request.args.get("limit", 50, type=int), MAX_LIMIT)
-        offset = min(offset, adapter.total)
+        split = request.args.get("split", "all")
+
+        image_ids = adapter.get_image_ids_for_split(split)
+        total = len(image_ids)
+        offset = min(offset, total)
 
         t0 = time.time()
         server_base = request.host_url.rstrip("/")
         items = []
-        for i in range(offset, min(offset + limit, adapter.total)):
-            items.append(adapter.cast(i, server_base))
+        for i in range(offset, min(offset + limit, total)):
+            items.append(adapter.cast_item(image_ids[i], server_base))
         elapsed = time.time() - t0
 
         app.logger.info(
             "[%s] offset=%d limit=%d returned=%d (%.1fs)",
-            name, offset, limit, len(items), elapsed,
+            name,
+            offset,
+            limit,
+            len(items),
+            elapsed,
         )
 
-        return jsonify({
-            "total": adapter.total,
-            "offset": offset,
-            "limit": limit,
-            "items": items,
-        })
+        return jsonify(
+            {
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "items": items,
+            }
+        )
 
     @app.route("/api/datasets/<name>/images/<filename>")
     def serve_image(name, filename):
@@ -121,7 +135,10 @@ def create_app(adapters_to_load=None, split="all"):
             return jsonify({"error": f"Dataset '{name}' not found"}), 404
 
         if not adapter.has_local_images or adapter.images_dir is None:
-            return jsonify({"error": f"Dataset '{name}' does not serve local images"}), 404
+            return (
+                jsonify({"error": f"Dataset '{name}' does not serve local images"}),
+                404,
+            )
 
         filepath = adapter.images_dir / filename
         if not filepath.exists() or not filepath.is_file():
@@ -146,6 +163,7 @@ def create_app(adapters_to_load=None, split="all"):
 # ------------------------------------------------------------------
 def _get_local_ip():
     import socket
+
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -158,10 +176,16 @@ def _get_local_ip():
 
 def main():
     parser = argparse.ArgumentParser(description="Unified Dataset API Server")
-    parser.add_argument("--host", default="0.0.0.0", help="Bind address (default: 0.0.0.0)")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Bind address (default: 0.0.0.0)"
+    )
     parser.add_argument("--port", type=int, default=8200, help="Port (default: 8200)")
-    parser.add_argument("--split", default="all", choices=["val", "train", "all"],
-                        help="Data split (default: all)")
+    parser.add_argument(
+        "--split",
+        default="all",
+        choices=["val", "train", "all"],
+        help="Data split (default: all)",
+    )
     args = parser.parse_args()
 
     print("Loading datasets...")

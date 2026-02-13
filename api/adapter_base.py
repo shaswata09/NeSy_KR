@@ -55,14 +55,24 @@ class DatasetAdapter(ABC):
 
     @abstractmethod
     def cast(self, index: int, server_base_url: str) -> dict[str, Any]:
-        """Cast item at positional index into the dataset-template format.
+        """Cast item at positional index into the dataset-template format."""
+        ...
 
-        server_base_url is provided so adapters with local images can build
-        absolute URLs like '{server_base_url}/api/datasets/gqa/images/123.jpg'.
-        """
+    @abstractmethod
+    def cast_item(self, image_id: Any, server_base_url: str) -> dict[str, Any]:
+        """Cast item with specific ID into the dataset-template format."""
         ...
 
     @abstractmethod
     def get_image_ids(self) -> list:
         """Return the ordered list of image IDs."""
         ...
+
+    def get_image_ids_for_split(self, split: str = "all") -> list:
+        """Return image IDs for a specific split. Returns all if split is 'all'."""
+        if split == "all":
+            return self.get_image_ids()
+        # By default, assume only one split exists if not overridden
+        if split in self.splits:
+            return self.get_image_ids()
+        return []
