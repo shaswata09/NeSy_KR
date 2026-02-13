@@ -53,7 +53,11 @@ function DiffLegend({ visibility, onToggle }) {
             onClick={() => onToggle(item.key)}
             className="flex items-center gap-1 cursor-pointer transition-opacity"
             style={{ opacity: active ? 1 : 0.35 }}
-            title={active ? `Hide ${item.label.toLowerCase()}` : `Show ${item.label.toLowerCase()}`}
+            title={
+              active
+                ? `Hide ${item.label.toLowerCase()}`
+                : `Show ${item.label.toLowerCase()}`
+            }
           >
             {item.dot}
             <span
@@ -95,13 +99,19 @@ export default function PredictionPane() {
     : [];
 
   // Auto-correct: if current mode is unavailable, fall back to first available
-  const activeMode = modes.includes(viewMode) ? viewMode : (modes[0] ?? viewMode);
+  const activeMode = modes.includes(viewMode)
+    ? viewMode
+    : (modes[0] ?? viewMode);
 
   const stats = pred
     ? {
-        correct: pred.nodes.filter((n) => n.status === DIFF_STATUS.CORRECT).length,
-        missing: pred.nodes.filter((n) => n.status === DIFF_STATUS.MISSING).length,
-        hallucinated: pred.nodes.filter((n) => n.status === DIFF_STATUS.HALLUCINATED).length,
+        correct: pred.nodes.filter((n) => n.status === DIFF_STATUS.CORRECT)
+          .length,
+        missing: pred.nodes.filter((n) => n.status === DIFF_STATUS.MISSING)
+          .length,
+        hallucinated: pred.nodes.filter(
+          (n) => n.status === DIFF_STATUS.HALLUCINATED,
+        ).length,
       }
     : null;
 
@@ -122,7 +132,11 @@ export default function PredictionPane() {
     <PaneContainer
       title="Prediction"
       headerLeft={
-        <ViewModeToggle modes={modes} value={activeMode} onChange={setViewMode} />
+        <ViewModeToggle
+          modes={modes}
+          value={activeMode}
+          onChange={setViewMode}
+        />
       }
       headerRight={null}
     >
@@ -131,7 +145,10 @@ export default function PredictionPane() {
           {/* Diff legend overlay - only for GRAPH mode */}
           {activeMode === "GRAPH" && (
             <div className="absolute top-2 left-2 z-10 flex items-center gap-3">
-              <DiffLegend visibility={statusVisibility} onToggle={toggleStatus} />
+              <DiffLegend
+                visibility={statusVisibility}
+                onToggle={toggleStatus}
+              />
             </div>
           )}
           {activeMode === "IMAGE" ? (
@@ -172,7 +189,7 @@ export default function PredictionPane() {
 
           {/* Stats overlay */}
           {stats && (
-            <div className="absolute bottom-2 left-2 flex gap-2 pointer-events-none">
+            <div className="absolute bottom-2 left-2 flex gap-2 pointer-events-none z-10">
               <span
                 className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                 style={{
