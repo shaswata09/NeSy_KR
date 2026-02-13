@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { availableDatasets, defaultDatasetId } from '../data/index.js'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { staticDatasets, defaultStaticDatasetId, fetchApiDatasets } from '../data/index.js'
 
 const GlobalStateContext = createContext(null)
 
@@ -40,9 +40,26 @@ export function StateProvider({ children }) {
     })
   }, [])
 
+  // Available datasets (static + dynamically discovered API datasets)
+  const [availableDatasets, setAvailableDatasets] = useState(staticDatasets)
+  const [datasetsReady, setDatasetsReady] = useState(false)
+
+  // Fetch API datasets from the unified server
+  const refreshApiDatasets = useCallback(() => {
+    fetchApiDatasets().then((apiDs) => {
+      setAvailableDatasets([...staticDatasets, ...apiDs])
+      if (!datasetsReady) setDatasetsReady(true)
+    })
+  }, [datasetsReady])
+
+  // Auto-fetch on mount
+  useEffect(() => {
+    refreshApiDatasets()
+  }, [])
+
   // Dataset selection
   const [activeDatasetId, setActiveDatasetId] = useState(
-    () => localStorage.getItem('nesy-dataset') ?? defaultDatasetId,
+    () => localStorage.getItem('nesy-dataset') ?? defaultStaticDatasetId,
   )
   const [dataset, setDataset] = useState([])
   const [datasetLoading, setDatasetLoading] = useState(true)
@@ -55,8 +72,23 @@ export function StateProvider({ children }) {
   // Image selection
   const [selectedImageId, setSelectedImageId] = useState(null)
 
-  // Load dataset when activeDatasetId changes
+  // Re-resolve activeDatasetId once API datasets arrive
+  // (e.g. if localStorage had 'api:gqa' from a previous session)
+  const resolvedInitial = useRef(false)
   useEffect(() => {
+    if (!datasetsReady || resolvedInitial.current) return
+    resolvedInitial.current = true
+    const stored = localStorage.getItem('nesy-dataset')
+    if (stored && availableDatasets.some((d) => d.id === stored)) {
+      setActiveDatasetId(stored)
+    } else if (availableDatasets.length > 0) {
+      setActiveDatasetId(availableDatasets[0].id)
+    }
+  }, [datasetsReady, availableDatasets])
+
+  // Load dataset when activeDatasetId or availableDatasets change
+  useEffect(() => {
+    if (!datasetsReady) return
     let cancelled = false
     const entry = availableDatasets.find((d) => d.id === activeDatasetId)
     if (!entry) {
@@ -98,7 +130,7 @@ export function StateProvider({ children }) {
     }
 
     return () => { cancelled = true }
-  }, [activeDatasetId])
+  }, [activeDatasetId, datasetsReady])
 
   // Load a specific page (API datasets only)
   const loadPage = useCallback((offset) => {
@@ -116,7 +148,7 @@ export function StateProvider({ children }) {
       console.error('Failed to load page:', err)
       setDatasetLoading(false)
     })
-  }, [activeDatasetId])
+  }, [activeDatasetId, availableDatasets])
 
   const nextPage = useCallback(() => {
     const next = pageOffset + PAGE_SIZE
@@ -149,6 +181,7 @@ export function StateProvider({ children }) {
     availableDatasets,
     activeDatasetId,
     switchDataset,
+    refreshApiDatasets,
     datasetLoading,
 
     // Dataset

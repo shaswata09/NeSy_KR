@@ -9,6 +9,7 @@ export default function Sidebar({ className, style, onResetLayout }) {
     availableDatasets,
     activeDatasetId,
     switchDataset,
+    refreshApiDatasets,
     selectedImageId,
     setSelectedImageId,
     selectedImage,
@@ -83,42 +84,41 @@ export default function Sidebar({ className, style, onResetLayout }) {
         </div>
       </div>
 
-      {/* Dataset Selector */}
-      {availableDatasets.length > 1 && (
-        <div
-          className="px-3 py-2 border-b"
-          style={{ borderColor: 'var(--border-primary)' }}
+      {/* Dataset Selector — always visible; re-fetches API datasets on focus */}
+      <div
+        className="px-3 py-2 border-b"
+        style={{ borderColor: 'var(--border-primary)' }}
+      >
+        <label
+          className="block text-[10px] font-semibold uppercase mb-1 tracking-wide"
+          style={{ color: 'var(--text-tertiary)' }}
         >
-          <label
-            className="block text-[10px] font-semibold uppercase mb-1 tracking-wide"
-            style={{ color: 'var(--text-tertiary)' }}
+          Dataset
+        </label>
+        <div className="relative">
+          <select
+            value={activeDatasetId}
+            onChange={(e) => switchDataset(e.target.value)}
+            onFocus={refreshApiDatasets}
+            className="w-full appearance-none text-xs font-medium rounded-md px-2.5 py-1.5 pr-7 cursor-pointer outline-none transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-primary)',
+            }}
           >
-            Dataset
-          </label>
-          <div className="relative">
-            <select
-              value={activeDatasetId}
-              onChange={(e) => switchDataset(e.target.value)}
-              className="w-full appearance-none text-xs font-medium rounded-md px-2.5 py-1.5 pr-7 cursor-pointer outline-none transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-elevated)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-primary)',
-              }}
-            >
-              {availableDatasets.map((ds) => (
-                <option key={ds.id} value={ds.id}>
-                  {ds.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
-              style={{ color: 'var(--text-tertiary)' }}
-            />
-          </div>
+            {availableDatasets.map((ds) => (
+              <option key={ds.id} value={ds.id}>
+                {ds.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
+            style={{ color: 'var(--text-tertiary)' }}
+          />
         </div>
-      )}
+      </div>
 
       {/* Pagination header */}
       {isPaginated && !datasetLoading && (

@@ -1,6 +1,7 @@
 /**
  * Auto-discovers all dataset JSON files under src/data/ at build time,
- * plus manually registered API-backed datasets.
+ * plus dynamically registered API-backed datasets fetched from the
+ * unified API server.
  *
  * Convention:
  *   - src/data/<name>.json           -> dataset named "<name>"
@@ -31,7 +32,7 @@ function labelFromPath(path) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-const staticDatasets = Object.entries(modules).map(([path, loader]) => ({
+export const staticDatasets = Object.entries(modules).map(([path, loader]) => ({
   id: path,
   label: labelFromPath(path),
   type: 'static',
@@ -42,29 +43,40 @@ const staticDatasets = Object.entries(modules).map(([path, loader]) => ({
 }))
 
 // ---------------------------------------------------------------------------
-// API datasets (manual registration)
+// API datasets (fetched dynamically from unified server)
 // ---------------------------------------------------------------------------
-const VG_API_PORT = 8100
-// Use the browser's current hostname so the UI works both locally and over LAN
-const VG_API_BASE = `http://${window.location.hostname}:${VG_API_PORT}`
+// Use the browser's current hostname so the UI works both locally and over LAN.
+export const API_BASE = `http://${window.location.hostname}:8200`
 
-const apiDatasets = [
-  {
-    id: 'api:visual_genome',
-    label: 'Visual Genome',
-    type: 'api',
-    async loadPage(offset = 0, limit = 50) {
-      const res = await fetch(
-        `${VG_API_BASE}/api/vg?offset=${offset}&limit=${limit}`,
-      )
-      if (!res.ok) throw new Error(`VG API error: ${res.status}`)
-      return res.json() // { total, offset, limit, items }
-    },
-  },
-]
+/**
+ * Fetch available datasets from the unified API server and return
+ * UI-ready entries with loadPage() functions.
+ * Returns [] if the server is unreachable.
+ */
+export async function fetchApiDatasets() {
+  try {
+    const res = await fetch(`${API_BASE}/api/datasets`)
+    if (!res.ok) return []
+    const datasets = await res.json()
+    return datasets.map((ds) => ({
+      id: `api:${ds.name}`,
+      label: ds.displayName,
+      type: 'api',
+      total: ds.total,
+      splits: ds.splits,
+      hasLocalImages: ds.hasLocalImages,
+      async loadPage(offset = 0, limit = 50) {
+        const r = await fetch(
+          `${API_BASE}/api/datasets/${ds.name}?offset=${offset}&limit=${limit}`,
+        )
+        if (!r.ok) throw new Error(`${ds.displayName} API error: ${r.status}`)
+        return r.json() // { total, offset, limit, items }
+      },
+    }))
+  } catch {
+    console.warn('Unified API server not reachable — no API datasets loaded.')
+    return []
+  }
+}
 
-// ---------------------------------------------------------------------------
-// Combined exports
-// ---------------------------------------------------------------------------
-export const availableDatasets = [...staticDatasets, ...apiDatasets]
-export const defaultDatasetId = availableDatasets[0]?.id ?? null
+export const defaultStaticDatasetId = staticDatasets[0]?.id ?? null
