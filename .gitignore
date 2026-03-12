@@ -207,6 +207,9 @@ marimo/_lsp/
 __marimo__/
 
 
+# Stray pip requirement fragments
+=2.7.0
+
 # Dataset Paths
 /data
 
