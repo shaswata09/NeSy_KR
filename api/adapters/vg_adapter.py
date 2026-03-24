@@ -68,26 +68,35 @@ class VGAdapter(DatasetAdapter):
         self._id_maps = {}
         for ds_name, config in CONFIGS.items():
             print(f"  [VG] Loading {ds_name}...")
-            ds = load_dataset(
-                "visual_genome",
-                config,
-                split="train",
-                cache_dir=CACHE_DIR,
-                trust_remote_code=True,
-            )
-            ds = ds.remove_columns("image")
-            self._subsets[ds_name] = ds
+            try:
+                ds = load_dataset(
+                    "visual_genome",
+                    config,
+                    split="train",
+                    cache_dir=CACHE_DIR,
+                    trust_remote_code=True,
+                )
+                ds = ds.remove_columns("image")
+                self._subsets[ds_name] = ds
 
-            print(f"    Building index ({len(ds):,} rows)...")
-            id_map = {}
-            for i in range(len(ds)):
-                id_map[ds[i]["image_id"]] = i
-            self._id_maps[ds_name] = id_map
+                print(f"    Building index ({len(ds):,} rows)...")
+                id_map = {}
+                for i in range(len(ds)):
+                    id_map[ds[i]["image_id"]] = i
+                self._id_maps[ds_name] = id_map
+            except Exception as e:
+                print(f"    WARNING: Skipping {ds_name}: {e}")
 
-        cids = set(self._id_maps["objects"].keys())
-        for name in self._id_maps:
-            cids &= set(self._id_maps[name].keys())
+        if not self._id_maps:
+            raise RuntimeError("No VG subsets could be loaded")
+
+        # Common IDs = intersection of all successfully loaded subsets
+        id_sets = [set(m.keys()) for m in self._id_maps.values()]
+        cids = id_sets[0]
+        for s in id_sets[1:]:
+            cids &= s
         self._common_ids = sorted(cids)
+        print(f"  [VG] Loaded subsets: {list(self._subsets.keys())}")
         print(f"  [VG] Common images: {len(self._common_ids):,}")
 
     def get_image_ids(self) -> list:
@@ -102,86 +111,96 @@ class VGAdapter(DatasetAdapter):
         image_id = self._common_ids[index]
         return self.cast_item(image_id, server_base_url)
 
+    def _get_row(self, subset_name: str, image_id: int):
+        """Get a row from a subset, or None if the subset is not loaded."""
+        if subset_name not in self._subsets:
+            return None
+        return self._subsets[subset_name][self._id_maps[subset_name][image_id]]
+
     def cast_item(self, image_id: int, server_base_url: str) -> dict[str, Any]:
-        obj_row = self._subsets["objects"][self._id_maps["objects"][image_id]]
-        rel_row = self._subsets["relationships"][
-            self._id_maps["relationships"][image_id]
-        ]
-        attr_row = self._subsets["attributes"][self._id_maps["attributes"][image_id]]
-        qa_row = self._subsets["question_answers"][
-            self._id_maps["question_answers"][image_id]
-        ]
-        reg_row = self._subsets["region_descriptions"][
-            self._id_maps["region_descriptions"][image_id]
-        ]
+        obj_row = self._get_row("objects", image_id)
+        rel_row = self._get_row("relationships", image_id)
+        attr_row = self._get_row("attributes", image_id)
+        qa_row = self._get_row("question_answers", image_id)
+        reg_row = self._get_row("region_descriptions", image_id)
 
         # Nodes
         nodes = []
         node_ids = set()
-        for obj in obj_row["objects"][:MAX_NODES]:
-            oid = str(obj["object_id"])
-            label = obj["names"][0].capitalize() if obj["names"] else f"Object {oid}"
-            nodes.append(
-                {
-                    "id": oid,
-                    "label": label,
-                    "bbox": {
-                        "x": obj["x"],
-                        "y": obj["y"],
-                        "w": obj["w"],
-                        "h": obj["h"],
-                    },
-                }
-            )
-            node_ids.add(oid)
+        if obj_row:
+            for obj in obj_row["objects"][:MAX_NODES]:
+                oid = str(obj["object_id"])
+                label = obj["names"][0].capitalize() if obj["names"] else f"Object {oid}"
+                nodes.append(
+                    {
+                        "id": oid,
+                        "label": label,
+                        "bbox": {
+                            "x": obj["x"],
+                            "y": obj["y"],
+                            "w": obj["w"],
+                            "h": obj["h"],
+                        },
+                    }
+                )
+                node_ids.add(oid)
 
         # Links
         links = []
-        for rel in rel_row["relationships"][:MAX_LINKS]:
-            src = str(rel["subject"]["object_id"])
-            tgt = str(rel["object"]["object_id"])
-            if src in node_ids and tgt in node_ids:
-                links.append({"source": src, "target": tgt, "label": rel["predicate"]})
+        if rel_row:
+            for rel in rel_row["relationships"][:MAX_LINKS]:
+                src = str(rel["subject"]["object_id"])
+                tgt = str(rel["object"]["object_id"])
+                if src in node_ids and tgt in node_ids:
+                    links.append({"source": src, "target": tgt, "label": rel["predicate"]})
 
         # Attributes
         attributes = []
-        for attr in attr_row["attributes"][:MAX_ATTRIBUTES]:
-            eid = str(attr["object_id"])
-            if eid not in node_ids:
-                continue
-            for a in attr.get("attributes") or []:
-                attributes.append(
-                    {
-                        "entityId": eid,
-                        "attribute": categorize_attribute(a),
-                        "value": a,
-                    }
-                )
+        if attr_row:
+            for attr in attr_row["attributes"][:MAX_ATTRIBUTES]:
+                eid = str(attr["object_id"])
+                if eid not in node_ids:
+                    continue
+                for a in attr.get("attributes") or []:
+                    attributes.append(
+                        {
+                            "entityId": eid,
+                            "attribute": categorize_attribute(a),
+                            "value": a,
+                        }
+                    )
 
         # QA pairs
         qas = []
-        for qa in qa_row["qas"][:MAX_QAS]:
-            qas.append(
-                {
-                    "id": f"qa_{qa['qa_id']}",
-                    "question": qa["question"],
-                    "answer": qa["answer"],
-                }
-            )
+        if qa_row:
+            for qa in qa_row["qas"][:MAX_QAS]:
+                qas.append(
+                    {
+                        "id": f"qa_{qa['qa_id']}",
+                        "question": qa["question"],
+                        "answer": qa["answer"],
+                    }
+                )
+
+        # Use whichever row is available for image metadata
+        meta_row = obj_row or reg_row or rel_row or attr_row or qa_row
+        image_url = (obj_row or {}).get("url", "")
+        width = meta_row["width"] if meta_row else 0
+        height = meta_row["height"] if meta_row else 0
 
         return {
             "id": f"vg_{image_id}",
-            "name": _make_name(obj_row["objects"]),
-            "imageUrl": obj_row["url"],
-            "width": obj_row["width"],
-            "height": obj_row["height"],
+            "name": _make_name(obj_row["objects"] if obj_row else []),
+            "imageUrl": image_url,
+            "width": width,
+            "height": height,
             "metadata": {
                 "source": "Visual Genome",
                 "imageId": image_id,
-                "numObjects": len(obj_row["objects"]),
-                "numRelations": len(rel_row["relationships"]),
-                "numRegions": len(reg_row["regions"]),
-                "numQAs": len(qa_row["qas"]),
+                "numObjects": len(obj_row["objects"]) if obj_row else 0,
+                "numRelations": len(rel_row["relationships"]) if rel_row else 0,
+                "numRegions": len(reg_row["regions"]) if reg_row else 0,
+                "numQAs": len(qa_row["qas"]) if qa_row else 0,
             },
             "groundTruth": {
                 "nodes": nodes,
